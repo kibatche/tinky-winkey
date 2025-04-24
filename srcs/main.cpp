@@ -1,7 +1,6 @@
-#include <iostream>
+#include "../includes/tinky-winkey.h"
 
 int main(void)
 {
-    std::cout << "Hello" << std::endl;
-    return EXIT_SUCCESS;
+    SC_HANDLE Manager = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 }

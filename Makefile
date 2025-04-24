@@ -14,7 +14,7 @@ debug: $(ODIR_DEBUG) $(NAME_DEBUG)
 
 #main file
 $(NAME): $(OBJS)
-	link.exe $(CCFLAGS)  $(INCL)  $(OBJS) -o $(NAME)
+	link.exe $(OBJS) -o $(NAME)
 .cpp.obj:
 	$(CC) $(CCFLAGS) $(INCL) -c $<
 
