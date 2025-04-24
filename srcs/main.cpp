@@ -2,5 +2,10 @@
 
 int main(void)
 {
-    SC_HANDLE Manager = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    SC_HANDLE SCManager = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (SCManager == NULL)
+    {
+        exit(ERROR);
+    }
+    
 }

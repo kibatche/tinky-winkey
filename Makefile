@@ -6,6 +6,7 @@ OBJS_DEBUG = main.obj
 INCL = -I ./includes
 RM = rm -rf
 NAME = tinky
+LIBS =  Advapi32.lib
 NAME_DEBUG = tinky_debug
 
 all: $(NAME)
