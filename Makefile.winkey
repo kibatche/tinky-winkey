@@ -1,0 +1,36 @@
+#compiler/linker options
+CCFLAGS = /nologo /Wall /WX
+CCFLAG_DEBUG = /DEBUG
+LINKER = link.exe
+LINKEROPT = /nologo
+
+DEL = del
+
+#WINKEY.exe related stuff
+DIR_WINKEY=winkey\srcs
+SRCS_WINKEY = $(DIR_WINKEY)\main.c 
+OBJS_WINKEY = $(SRCS_WINKEY:.c=.obj)
+INCL_WINKEY = /I .\winkey\includes
+LIBS_WINKEY = 
+WINKEY = winkey.exe
+
+all: $(WINKEY)
+
+#linker
+$(WINKEY): $(OBJS_WINKEY)
+	$(LINKER) $(LINKEROPT) $(LIBS_WINKEY) $** /OUT:$@
+
+#compiler
+.c.obj:
+	$(CC) $(CCFLAGS) $(INCL_WINKEY) /c $< /Fo:$@
+
+#clean
+clean:
+	$(DEL) $(OBJS_WINKEY)
+fclean: clean
+	$(DEL) $(WINKEY)
+#quiet nmake w/ /C
+re: fclean
+	@nmake /C all
+redebug: fclean debug
+.PHONY:	all clean re fclean
