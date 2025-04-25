@@ -27,7 +27,7 @@ DWORD GetPIDByProcName()
             printf("Found winlogon.exe with PID %lu\n", pe32.th32ProcessID);
             CloseHandle(handleProc);
             return pe32.th32ProcessID;
-        }   
+        }
     }
     CloseHandle(handleProc);
     printf("Impossible to find winlogon.exe's PID. WHAT THE FU ??\n");
@@ -76,11 +76,26 @@ void ImpersonateSystemToken()
         printf("Could not open the process token.\n");
         exit(1);
     }
-    success = DuplicateTokenEx(sysToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation,  TokenPrimary, &newSysTok);
+    success = DuplicateTokenEx(sysToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
     if (!success)
     {
-        printf("Could not duplicqte the NT/AUTHORITY SYSTEM token.\n");
+        printf("Could not duplicate the process token.\n");
         exit(1);
     }
-    
+    success = SetThreadToken(0, newSysTok);
+    if (!success)
+    {
+        printf("Failed to set the current thread's token.\n");
+        exit(1);
+    }
+    HANDLE tmpTok = GetCurrentThreadToken();
+    TOKEN_PRIVILEGES tp;
+    int returnLength;
+    success = GetTokenInformation(tmpTok, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
+    if (!success)
+    {
+        printf("Failed to set the current thread's token.\n");
+        exit(1);
+    }
+    //https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-lookupprivilegenamea
 }
