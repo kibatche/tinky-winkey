@@ -1,6 +1,6 @@
 #include "svc.h"
 
-
+// No user attached to the main thread before attaching a token to it.
 void PrintUserNameByProc() {
     TOKEN_USER tokenUser;
     DWORD dwSize = 0;
@@ -40,7 +40,6 @@ void PrintUserNameByProc() {
     free(pTokenUser);
 }
 
-// No user attached to the main thread before attaching a token to it.
 void PrintUserNameByThread() {
     TOKEN_USER tokenUser;
     DWORD dwSize = 0;
