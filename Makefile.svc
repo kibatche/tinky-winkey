@@ -11,7 +11,8 @@ DIR_SVC=svc\srcs
 SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c
 OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
-LIBS_SVC =  Advapi32.lib
+LIBS_SVC =  
+ Kernel32.lib
 SVC = svc.exe
 
 all: $(SVC)

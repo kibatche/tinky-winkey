@@ -1,5 +1,105 @@
 #include "svc.h"
 
+
+void PrintUserNameByProc() {
+    TOKEN_USER tokenUser;
+    DWORD dwSize = 0;
+    HANDLE hToken;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        printf("OpenProcessToken failed.\n");
+        print_err();
+        return;
+    }
+    GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
+    PTOKEN_USER pTokenUser = malloc(dwSize);
+    if (pTokenUser == NULL)
+    {
+        printf("malloc failed");
+        exit(1);
+    }
+    if (GetTokenInformation(hToken, TokenUser, pTokenUser, dwSize, &dwSize))
+    {
+        // Obtenir le SID de l'utilisateur
+        SID_NAME_USE sidType;
+        char name[256];
+        char domain[256];
+        DWORD nameSize = sizeof(name);
+        DWORD domainSize = sizeof(domain);
+        
+        if (LookupAccountSid(NULL, pTokenUser->User.Sid, name, &nameSize, domain, &domainSize, &sidType))
+            printf("User: %s\\%s\n", domain, name);
+        else
+        {
+            printf("LookupAccountSid failed.\n");
+            print_err();
+        }
+    }
+    else
+        print_err();
+    free(pTokenUser);
+}
+
+// No user attached to the main thread before attaching a token to it.
+void PrintUserNameByThread() {
+    TOKEN_USER tokenUser;
+    DWORD dwSize = 0;
+    HANDLE hToken;
+
+    if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE,&hToken)) {
+        printf("OpenThreadToken failed.\n");
+        print_err();
+        return;
+    }
+    GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
+    PTOKEN_USER pTokenUser = malloc(dwSize);
+    if (GetTokenInformation(hToken, TokenUser, pTokenUser, dwSize, &dwSize))
+    {
+        // Obtenir le SID de l'utilisateur
+        SID_NAME_USE sidType;
+        char name[256];
+        char domain[256];
+        DWORD nameSize = sizeof(name);
+        DWORD domainSize = sizeof(domain);
+        
+        if (LookupAccountSid(NULL, pTokenUser->User.Sid, name, &nameSize, domain, &domainSize, &sidType))
+            printf("User: %s\\%s\n", domain, name);
+        else
+        {
+            printf("LookupAccountSid failed.\n");
+            print_err();
+        }
+    }
+    else
+        print_err();
+    free(pTokenUser);
+}
+
+void printPrivileges(HANDLE hToken)
+{
+    int returnLength;
+    TOKEN_PRIVILEGES tp;
+
+    GetTokenInformation(hToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
+    PTOKEN_PRIVILEGES pPrivileges = malloc(returnLength);
+    if (pPrivileges == NULL) {
+        printf("malloc failed.\n");
+        exit(1);
+    }
+    GetTokenInformation(hToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
+    for (int i = 0; i < pPrivileges->PrivilegeCount; i++)
+    {
+        LUID_AND_ATTRIBUTES la = pPrivileges->Privileges[i];
+        char name[256];
+        DWORD nameLen = sizeof(name);
+        if (LookupPrivilegeNameA(NULL, &la.Luid, name, &nameLen)) {
+            printf("%s %s", name, ((la.Attributes & SE_PRIVILEGE_ENABLED) ? "(ENABLED)\n" : "(DISABLED)\n"));
+        }
+    }
+    free(pPrivileges);
+    pPrivileges = NULL;
+}
+
 DWORD GetPIDByProcName()
 {
     HANDLE handleProc = NULL;
@@ -34,25 +134,26 @@ DWORD GetPIDByProcName()
     exit(ERROR);
 }
 
-BOOL SetDebugPrivilege()
+BOOL EnableAllPrivilege(HANDLE currentToken)
 {
     TOKEN_PRIVILEGES tp;
     LUID luid;
+    int returnLength;
 
-    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid))
-    {
-        print_err();
-        return FALSE;
+    GetTokenInformation(currentToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
+    PTOKEN_PRIVILEGES pPrivileges = malloc(returnLength);
+    if (pPrivileges == NULL) {
+        printf("malloc failed.\n");
+        exit(1);
     }
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Luid = luid;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    if (!AdjustTokenPrivileges(GetCurrentProcess(), FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PWORD)NULL))
+    GetTokenInformation(currentToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
+    for (int i = 0; i < pPrivileges->PrivilegeCount; i++)
+        pPrivileges->Privileges[i].Attributes = SE_PRIVILEGE_ENABLED;
+    if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
-        print_err();
-        return FALSE;
+        printf("AdjustTokenPrivileges failed.\n");
+        exit(print_err());
     }
-    printf("%s enabled.\n", SE_DEBUG_NAME);
     return TRUE;
 }
 
@@ -61,41 +162,50 @@ void ImpersonateSystemToken()
     HANDLE sysToken = NULL;
     HANDLE procHandle = NULL;
     HANDLE newSysTok = NULL;
+    HANDLE tmpProcHandle = NULL; 
+    HANDLE currentToken = NULL;
 
-    if (!SetDebugPrivilege())
-        exit(1);
-    procHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, TRUE, GetPIDByProcName());
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
+    {
+        printf("OpenProcessToken failed.\n");
+        exit(print_err());
+    }
+    EnableAllPrivilege(currentToken);
+    // no token attached to the current thread, so we use the proc instead.
+    PrintUserNameByProc();
+    printf("\n=== Privileges before impersonation ===\n\n");
+    printPrivileges(GetCurrentProcessToken());
+    procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, GetPIDByProcName());
     if (procHandle == NULL)
     {
         printf("Impossible to get the process handle.\n");
-        exit(1);
+        exit(print_err());
     }
-    BOOL success = OpenProcessToken(procHandle, MAXIMUM_ALLOWED, &sysToken);
+    BOOL success = OpenProcessToken(procHandle, TOKEN_DUPLICATE | TOKEN_QUERY, &sysToken);
     if (!success)
     {
         printf("Could not open the process token.\n");
-        exit(1);
+        exit(print_err());
     }
-    success = DuplicateTokenEx(sysToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
+    success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS_P, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
     if (!success)
     {
         printf("Could not duplicate the process token.\n");
-        exit(1);
+        exit(print_err());
     }
-    success = SetThreadToken(0, newSysTok);
+    success = SetThreadToken((PHANDLE)NULL, newSysTok);
     if (!success)
     {
         printf("Failed to set the current thread's token.\n");
-        exit(1);
+        exit(print_err());
     }
-    HANDLE tmpTok = GetCurrentThreadToken();
-    TOKEN_PRIVILEGES tp;
-    int returnLength;
-    success = GetTokenInformation(tmpTok, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
-    if (!success)
+    PrintUserNameByThread();
+    printf("\n=== Privileges for the thread after impersonation ===\n\n");
+    if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
     {
-        printf("Failed to set the current thread's token.\n");
-        exit(1);
+        printf("OpenThreadToken failed.\n");
+        exit(print_err());
     }
-    //https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-lookupprivilegenamea
+    EnableAllPrivilege(currentToken);
+    printPrivileges(GetCurrentThreadToken()); 
 }
