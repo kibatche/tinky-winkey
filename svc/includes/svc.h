@@ -6,9 +6,17 @@
 #include <stdlib.h>
 #include "consts.h"
 
-void installSvc(SC_HANDLE SCManager);
-void startSvc(SC_HANDLE SCManager);
-void stopSvc(SC_HANDLE SCManager);
-void deleteSvc(SC_HANDLE SCManager);
+void InstallSvc(SC_HANDLE SCManager);
+void StartSvc(SC_HANDLE SCManager);
+void StopSvc(SC_HANDLE SCManager);
+void DeleteSvc(SC_HANDLE SCManager);
 
-int print_err(void);
+void ImpersonateSystemToken(void);
+void PrintUserNameByProc(void);
+void PrintUserNameByThread(void);
+void PrintPrivileges(HANDLE hToken);
+DWORD GetPIDByProcName(void);
+BOOL EnableAllPrivilege(HANDLE currentToken);
+void ImpersonateSystemToken(void);
+
+int PrintError(void);

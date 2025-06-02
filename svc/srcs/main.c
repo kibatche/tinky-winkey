@@ -7,17 +7,31 @@ int main(int ac, char *av[])
         printf(SVC_USAGE);
         exit(1);
     }
-    SC_HANDLE SCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (SCManager == NULL)
-        exit(print_err());
+    SC_HANDLE SCManager = NULL;
     if (!strcmp(av[1], SVC_INSTALL))
-        installSvc(SCManager);
+    {
+        OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (SCManager == NULL) exit(PrintError());
+        InstallSvc(SCManager);
+    }
     else if (!strcmp(av[1], SVC_START))
-        startSvc(SCManager);
+    {
+        OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (SCManager == NULL) exit(PrintError());
+        StartSvc(SCManager);
+    }
     else if (!strcmp(av[1], SVC_STOP))
-        stopSvc(SCManager);
+    {
+        OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (SCManager == NULL) exit(PrintError());
+        StopSvc(SCManager);
+    }
     else if (!strcmp(av[1], SVC_DELETE))
-        deleteSvc(SCManager);
+    {
+        OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (SCManager == NULL) exit(PrintError());
+        DeleteSvc(SCManager);
+    }
     else
     {
         printf(SVC_USAGE);

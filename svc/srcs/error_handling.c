@@ -1,6 +1,6 @@
 #include "svc.h"
 
-int print_err(void)
+int PrintError(void)
 {
     int err = GetLastError();
     int sz;
@@ -19,6 +19,6 @@ int print_err(void)
         printf("Unknown error.\n");
         return ERROR;
     }
-    printf("Error %d : %s\n", err, buf);
+    printf("Error svc.exe %d : %s\n", err, buf);
     return ERROR;
 }

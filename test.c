@@ -6,7 +6,7 @@
 #include <locale.h>
 
 
-int print_err(void)
+int PrintError(void)
 {
     int err = GetLastError();
     int sz;
@@ -36,7 +36,7 @@ void PrintUserNameByProc() {
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
         printf("OpenProcessToken failed.\n");
-        print_err();
+        PrintError();
         return;
     }
     GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
@@ -60,11 +60,11 @@ void PrintUserNameByProc() {
         else
         {
             printf("LookupAccountSid failed.\n");
-            print_err();
+            PrintError();
         }
     }
     else
-        print_err();
+        PrintError();
     free(pTokenUser);
 }
 
@@ -76,7 +76,7 @@ void PrintUserNameByThread() {
 
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE,&hToken)) {
         printf("OpenThreadToken failed.\n");
-        print_err();
+        PrintError();
         return;
     }
     GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
@@ -95,15 +95,15 @@ void PrintUserNameByThread() {
         else
         {
             printf("LookupAccountSid failed.\n");
-            print_err();
+            PrintError();
         }
     }
     else
-        print_err();
+        PrintError();
     free(pTokenUser);
 }
 
-void printPrivileges(HANDLE hToken)
+void PrintPrivileges(HANDLE hToken)
 {
     int returnLength;
     TOKEN_PRIVILEGES tp;
@@ -135,12 +135,12 @@ DWORD GetPIDByProcName()
 
     handleProc = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (handleProc == INVALID_HANDLE_VALUE)
-        exit(print_err());
+        exit(PrintError());
     pe32.dwSize = sizeof(PROCESSENTRY32);
     if (!Process32First(handleProc, &pe32))
     {
         CloseHandle(handleProc);
-        exit(print_err());
+        exit(PrintError());
     }
     if (!strcmp(pe32.szExeFile, "winlogon.exe"))
     {
@@ -181,7 +181,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
         printf("AdjustTokenPrivileges failed.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     return TRUE;
 }
@@ -197,46 +197,46 @@ void ImpersonateSystemToken()
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
     {
         printf("OpenProcessToken failed.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     EnableAllPrivilege(currentToken);
     // not token attached to the current thread, so we use the proc instead.
     PrintUserNameByProc();
     printf("\n=== Privileges before impersonation ===\n\n");
-    printPrivileges(GetCurrentProcessToken());
+    PrintPrivileges(GetCurrentProcessToken());
     procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, GetPIDByProcName());
     if (procHandle == NULL)
     {
         printf("Impossible to get the process handle.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     BOOL success = OpenProcessToken(procHandle, TOKEN_DUPLICATE | TOKEN_QUERY, &sysToken);
     if (!success)
     {
         printf("Could not open the process token.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS_P, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
     if (!success)
     {
         printf("Could not duplicate the process token.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     success = SetThreadToken((PHANDLE)NULL, newSysTok);
     if (!success)
     {
         printf("Failed to set the current thread's token.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     PrintUserNameByThread();
     printf("\n=== Privileges for the thread after impersonation ===\n\n");
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
     {
         printf("OpenThreadToken failed.\n");
-        exit(print_err());
+        exit(PrintError());
     }
     EnableAllPrivilege(currentToken);
-    printPrivileges(GetCurrentThreadToken()); 
+    PrintPrivileges(GetCurrentThreadToken()); 
 }
 
 int main()

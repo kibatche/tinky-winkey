@@ -3,16 +3,14 @@ CCFLAGS = /nologo /Wall /WX
 CCFLAG_DEBUG = /DEBUG
 LINKER = link.exe
 LINKEROPT = /nologo
-
 DEL = del
 
 #svc.exe related stuff
 DIR_SVC=svc\srcs
-SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c
+SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c $(DIR_SVC)\impersonate_token.c
 OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
-LIBS_SVC =  
- Kernel32.lib
+LIBS_SVC = Kernel32.lib Advapi32.lib
 SVC = svc.exe
 
 all: $(SVC)
@@ -23,7 +21,7 @@ $(SVC): $(OBJS_SVC)
 
 #compiler
 .c.obj:
-	$(CC) $(CCFLAGS) $(INCL_SVC) /c $< /Fo:$@
+	$(CC) $(CCFLAGS) $(CCFLAG_DEBUG) $(INCL_SVC) /c $< /Fo:$@
 
 #clean
 clean:

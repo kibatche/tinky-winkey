@@ -8,10 +8,10 @@ DEL = del
 
 #WINKEY.exe related stuff
 DIR_WINKEY=winkey\srcs
-SRCS_WINKEY = $(DIR_WINKEY)\main.c 
+SRCS_WINKEY = $(DIR_WINKEY)\main.c $(DIR_WINKEY)\svc_ctrl.c
 OBJS_WINKEY = $(SRCS_WINKEY:.c=.obj)
 INCL_WINKEY = /I .\winkey\includes
-LIBS_WINKEY = 
+LIBS_WINKEY = Kernel32.lib Advapi32.lib
 WINKEY = winkey.exe
 
 all: $(WINKEY)
