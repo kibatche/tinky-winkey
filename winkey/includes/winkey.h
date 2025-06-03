@@ -9,6 +9,7 @@
 #include "consts.h"
 
 
+
 VOID WINAPI SvcMain(DWORD dwArgc, LPTSTR *lpszArgv);
 VOID SvcInit(DWORD dwArgc, LPTSTR *lpszArgv);
 VOID WINAPI SvcCtrlHandler(DWORD ctrl);

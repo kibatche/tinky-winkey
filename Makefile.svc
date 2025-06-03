@@ -1,8 +1,8 @@
 #compiler/linker options
-CCFLAGS = /nologo /Wall /WX
-CCFLAG_DEBUG = /DEBUG
+CCFLAGS = /nologo /Wall /WX 
+CCFLAG_DEBUG = /Zi /Od /FS /Fd:svc.pdb
 LINKER = link.exe
-LINKEROPT = /nologo
+LINKEROPT = /nologo /DEBUG
 DEL = del
 
 #svc.exe related stuff
@@ -12,6 +12,8 @@ OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
 LIBS_SVC = Kernel32.lib Advapi32.lib
 SVC = svc.exe
+
+DEBUG_FILE = svc.pdb svc.ilk
 
 all: $(SVC)
 
@@ -30,6 +32,6 @@ fclean: clean
 	$(DEL) $(SVC)
 #quiet nmake w/ /C
 re: fclean
-	@nmake /C all
+	@nmake -f .\Makefile.svc /C all
 redebug: fclean debug
 .PHONY:	all clean re fclean

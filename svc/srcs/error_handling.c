@@ -19,6 +19,6 @@ int PrintError(void)
         printf("Unknown error.\n");
         return ERROR;
     }
-    printf("Error svc.exe %d : %s\n", err, buf);
+    printf(u8"Error svc.exe %d : %hs\n", err, buf);
     return ERROR;
 }

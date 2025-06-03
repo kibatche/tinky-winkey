@@ -2,23 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C/C++ Runner: Debug Session",
-      "type": "cppdbg",
+      "name": "Debug C avec MSVC",
+      "type": "cppvsdbg",
       "request": "launch",
-      "args": ["install"],
-      "stopAtEntry": false,
-      "externalConsole": true,
-      "cwd": "c:/Users/user/Documents/tinky-winkey",
-      "program": "c:/Users/user/Documents/tinky-winkey/svc.exe",
-      "MIMode": "gdb",
-      "miDebuggerPath": "c:/MinGW/bin/gdb.exe",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    }
+      "program": "${workspaceFolder}/svc.exe",
+      "args": [
+        "stop"
+      ],
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal"
+    },
   ]
 }

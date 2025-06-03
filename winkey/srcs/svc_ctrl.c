@@ -33,33 +33,14 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
     ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 
     /**** TEST */
-    HANDLE hFile = CreateFile(".\\test_log",                // name of the write
-        GENERIC_WRITE,          // open for writing
-        0,                      // do not share
-        NULL,                   // default security
-        CREATE_NEW,             // create new file only
-        FILE_ATTRIBUTE_NORMAL,  // normal file
-        NULL);
-    if (hFile == INVALID_HANDLE_VALUE) 
-    { 
-        printf(TEXT("Terminal failure: Unable to open file \"%s\" for write.\n"), ".\\test_log");
-        return;
-    }
-    char DataBuffer[] = "This is a test.\n";
     while (1)
     {
-        DWORD stopEvt = WaitForSingleObject(svcStopEvt, 0);
-        if (stopEvt)
+        DWORD stopEvt = WaitForSingleObject(svcStopEvt, 1);
+        if (stopEvt == WAIT_OBJECT_0)
         {
             ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
             exit(0);
         }
-        WriteFile( 
-            hFile,           // open file handle
-            DataBuffer,      // start of data to write
-            17,  // number of bytes to write
-            NULL, // number of bytes that were written
-            NULL); 
         Sleep(1000);
     }
         /*** FIN */

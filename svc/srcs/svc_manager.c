@@ -8,6 +8,20 @@
  */
 void InstallSvc(SC_HANDLE SCManager)
 {
+    char cwd[1024];
+    GetCurrentDirectory((DWORD)1024, (LPSTR)&cwd);
+    DWORD totalLenSvcBinPath = (DWORD)strlen(cwd) + (DWORD)1 + strlen(SVC_BIN) + (DWORD)1; 
+    char *binaryPath = malloc(totalLenSvcBinPath);
+
+    if (binaryPath == NULL)
+    {
+        CloseServiceHandle(SCManager);
+        exit(PrintError());
+    }
+    strcpy_s(binaryPath, totalLenSvcBinPath, cwd);
+    strcat_s(binaryPath, totalLenSvcBinPath, "\\");
+    strcat_s(binaryPath, totalLenSvcBinPath, SVC_BIN);
+
     SC_HANDLE handlerSvc = CreateService(SCManager,
     SVC_NAME,
     SVC_NAME,
@@ -15,7 +29,7 @@ void InstallSvc(SC_HANDLE SCManager)
     SERVICE_WIN32_OWN_PROCESS,
     SERVICE_DEMAND_START,
     SERVICE_ERROR_IGNORE,
-    SVC_BIN,
+    binaryPath,
     NULL, NULL, NULL, NULL, "");
     if (handlerSvc == NULL)
     {
@@ -42,7 +56,6 @@ void StartSvc(SC_HANDLE SCManager)
         CloseServiceHandle(SCManager);
         exit(PrintError());
     }
-    // if (!QueryServiceStatusEx(handlerSvc, SC_STATUS_PROCESS_INFO, ))
     ImpersonateSystemToken();
     BOOL success = StartService(handlerSvc, 0, NULL);
     if (!success)
@@ -62,13 +75,13 @@ void StartSvc(SC_HANDLE SCManager)
 void StopSvc(SC_HANDLE SCManager)
 {
     SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, SERVICE_STOP);
-    LPSERVICE_STATUS stat = NULL;
+    SERVICE_STATUS_PROCESS stat;
     if (handlerSvc == NULL)
     {
         CloseServiceHandle(SCManager);
         exit(PrintError());
     }
-    BOOL success = ControlService(handlerSvc, SERVICE_CONTROL_STOP, stat);
+    BOOL success = ControlService(handlerSvc, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&stat);
     if (!success)
     {
         CloseServiceHandle(SCManager);
