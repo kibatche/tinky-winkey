@@ -7,10 +7,11 @@ DEL = del
 
 #svc.exe related stuff
 DIR_SVC=svc\srcs
-SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c $(DIR_SVC)\impersonate_token.c
+SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c \
+			$(DIR_SVC)\svc_controller.c $(DIR_SVC)\svc_utils.c $(DIR_SVC)\impersonate_token.c $(DIR_SVC)\log.c
 OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
-LIBS_SVC = Kernel32.lib Advapi32.lib
+LIBS_SVC = Kernel32.lib Advapi32.lib Wtsapi32.lib
 SVC = svc.exe
 
 DEBUG_FILE = svc.pdb svc.ilk

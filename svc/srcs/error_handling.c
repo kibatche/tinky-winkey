@@ -20,5 +20,6 @@ int PrintError(void)
         return ERROR;
     }
     printf(u8"Error svc.exe %d : %hs\n", err, buf);
+    log(buf);
     return ERROR;
 }

