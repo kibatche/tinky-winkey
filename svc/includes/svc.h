@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include "consts.h"
 
+#define REEF(x){ if (x){ free(x); x = NULL;}}
+
 void InstallSvc(SC_HANDLE SCManager);
 void StartSvc(SC_HANDLE SCManager);
 void StopSvc(SC_HANDLE SCManager);

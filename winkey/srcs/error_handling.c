@@ -1,6 +1,6 @@
-#include "svc.h"
+#include "winkey.h"
 
-int PrintError(void)
+INT PrintError(void)
 {
     int err = GetLastError();
     int sz;

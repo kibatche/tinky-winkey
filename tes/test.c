@@ -1,14 +1,35 @@
-#include "svc.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <tlhelp32.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
 
-// No user attached to the main thread before attaching a token to it.
-/**
- * Imprime le nom de l'utilisateur courant du processus.
- * 
- * Vu qu'il ny a pas d'utilisateur sur le thread principal, cette facon de proceder est necessaire pour comparer visuellement
- * si le programme tourne bien avec un nouvel utilisateur en comparaison de celui aui sera trouve ci-dessous.
- */
-void PrintUserNameByProc(void)
+
+int PrintError(void)
 {
+    int err = GetLastError();
+    int sz;
+    char buf[512];
+
+    sz = FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        err,
+        0,
+        buf,
+        512,
+        NULL );
+    if (!sz)//the error is not known
+    {
+        printf("Unknown error.\n");
+        return ERROR;
+    }
+    printf("Error %d : %s\n", err, buf);
+    return ERROR;
+}
+
+void PrintUserNameByProc() {
     TOKEN_USER tokenUser;
     DWORD dwSize = 0;
     HANDLE hToken;
@@ -47,11 +68,8 @@ void PrintUserNameByProc(void)
     free(pTokenUser);
 }
 
-/**
- * Imprime le nom de l'utilisateur courant du thread.
- */
-void PrintUserNameByThread(void)
-{
+// No user attached to the main thread before attaching a token to it.
+void PrintUserNameByThread() {
     TOKEN_USER tokenUser;
     DWORD dwSize = 0;
     HANDLE hToken;
@@ -85,22 +103,19 @@ void PrintUserNameByThread(void)
     free(pTokenUser);
 }
 
-/**
- * Imprime les privileges sur la sortie standard.
- */
 void PrintPrivileges(HANDLE hToken)
 {
-    DWORD returnLength;
+    int returnLength;
     TOKEN_PRIVILEGES tp;
 
     GetTokenInformation(hToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
-    PTOKEN_PRIVILEGES pPrivileges = malloc((size_t)returnLength);
+    PTOKEN_PRIVILEGES pPrivileges = malloc(returnLength);
     if (pPrivileges == NULL) {
         printf("malloc failed.\n");
         exit(1);
     }
     GetTokenInformation(hToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
-    for (DWORD i = 0; i < pPrivileges->PrivilegeCount; i++)
+    for (int i = 0; i < pPrivileges->PrivilegeCount; i++)
     {
         LUID_AND_ATTRIBUTES la = pPrivileges->Privileges[i];
         char name[256];
@@ -113,10 +128,7 @@ void PrintPrivileges(HANDLE hToken)
     pPrivileges = NULL;
 }
 
-/**
- * Trouve l'identifiant de processus en fonction du nom de ce dernier.
- */
-DWORD GetPIDByProcName(void)
+DWORD GetPIDByProcName()
 {
     HANDLE handleProc = NULL;
     PROCESSENTRY32 pe32;
@@ -150,22 +162,21 @@ DWORD GetPIDByProcName(void)
     exit(ERROR);
 }
 
-/**
- * Configure les privileges pour qu'ils soient tous actives s'il ne l'etaient pas avant.
- */
 BOOL EnableAllPrivilege(HANDLE currentToken)
 {
     TOKEN_PRIVILEGES tp;
-    DWORD returnLength;
+    LUID luid;
+    int returnLength;
+
 
     GetTokenInformation(currentToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
-    PTOKEN_PRIVILEGES pPrivileges = malloc((size_t)returnLength);
+    PTOKEN_PRIVILEGES pPrivileges = malloc(returnLength);
     if (pPrivileges == NULL) {
         printf("malloc failed.\n");
         exit(1);
     }
     GetTokenInformation(currentToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
-    for (DWORD i = 0; i < pPrivileges->PrivilegeCount; i++)
+    for (int i = 0; i < pPrivileges->PrivilegeCount; i++)
         pPrivileges->Privileges[i].Attributes = SE_PRIVILEGE_ENABLED;
     if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
@@ -175,11 +186,12 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     return TRUE;
 }
 
-void ImpersonateSystemToken(void)
+void ImpersonateSystemToken()
 {
     HANDLE sysToken = NULL;
     HANDLE procHandle = NULL;
     HANDLE newSysTok = NULL;
+    HANDLE tmpProcHandle = NULL; 
     HANDLE currentToken = NULL;
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
@@ -188,7 +200,7 @@ void ImpersonateSystemToken(void)
         exit(PrintError());
     }
     EnableAllPrivilege(currentToken);
-    // no token attached to the current thread, so we use the proc instead.
+    // not token attached to the current thread, so we use the proc instead.
     PrintUserNameByProc();
     printf("\n=== Privileges before impersonation ===\n\n");
     PrintPrivileges(GetCurrentProcessToken());
@@ -225,4 +237,9 @@ void ImpersonateSystemToken(void)
     }
     EnableAllPrivilege(currentToken);
     PrintPrivileges(GetCurrentThreadToken()); 
+}
+
+int main()
+{
+    ImpersonateSystemToken();
 }
