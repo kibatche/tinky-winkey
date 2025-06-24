@@ -49,6 +49,12 @@ int main(int ac, char *av[])
             if (SCManager == NULL) exit(PrintError());
             DeleteSvc(SCManager);
         }
+        else if (!strcmp(av[1], SVC_UPDATE))
+        {
+            SCManager =  OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (SCManager == NULL) exit(PrintError());
+            UpdateSvc(SCManager);
+        }
         else
         {
             printf(SVC_USAGE);

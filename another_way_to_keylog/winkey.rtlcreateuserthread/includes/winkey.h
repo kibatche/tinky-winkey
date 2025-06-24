@@ -18,7 +18,8 @@ typedef long (*_RtlCreateUserThread)(HANDLE,
     BOOLEAN,ULONG,
     PULONG,PULONG,
     PVOID,PVOID,
-    PHANDLE,CLIENT_ID* );
+    PHANDLE,CLIENT_ID*
+);
 
 _RtlCreateUserThread RtlCreateUserThread;
 

