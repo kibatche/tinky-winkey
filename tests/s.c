@@ -8,7 +8,6 @@
 #include <wingdi.h>
 
 HHOOK winHook;
-HWND gh_hwndMain;
 
 int PrintError(void)
 {

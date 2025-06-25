@@ -1,7 +1,6 @@
 #include "winkey.h"
 
 HHOOK winHook;
-HWND gh_hwndMain;
 BOOL foregroundWindowChanged;
 char foregroundWindowTitle[4096];
 
@@ -16,14 +15,27 @@ int main(int argc, char **argv)
     (void)argv;
     winHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
     HWINEVENTHOOK winEvt = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    HWND hwnd;
+    WNDCLASSEXA wcx;
     if (winHook == NULL || winEvt == NULL)
+        exit(PrintError());
+    wcx = CreateEmptyClassWindow();
+    if (RegisterClassExA(&wcx) == 0)
+        exit(PrintError());
+    hwnd = CreateEmptyWindow();
+    if (hwnd != NULL)
+    {
+        BOOL success = AddClipboardFormatListener(hwnd);
+        if ( success == FALSE) exit(PrintError());
+    }
+    else
         exit(PrintError());
     foregroundWindowChanged = TRUE;
     GetWindowTitle(GetForegroundWindow());
     MSG msg;
     while (1)
     {
-        if (GetMessage(&msg, NULL, 0, 0))
+        if (GetMessageA(&msg, NULL, 0, 0))
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
@@ -31,4 +43,5 @@ int main(int argc, char **argv)
     }
     UnhookWinEvent(winEvt);
     UnhookWindowsHookEx(winHook);
+    RemoveClipboardFormatListener(hwnd);
 }

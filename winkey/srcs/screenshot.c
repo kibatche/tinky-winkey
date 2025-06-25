@@ -23,13 +23,10 @@ static PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
     else if (cClrBits <= 24) 
         cClrBits = 24; 
     else cClrBits = 32; 
-     if (cClrBits < 24) 
-         pbmi = (PBITMAPINFO) LocalAlloc(LPTR, 
-                    sizeof(BITMAPINFOHEADER) + 
-                    sizeof(RGBQUAD) * (1<< cClrBits)); 
-     else 
-         pbmi = (PBITMAPINFO) LocalAlloc(LPTR, 
-                    sizeof(BITMAPINFOHEADER)); 
+    if (cClrBits < 24) 
+        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * (1i64 << cClrBits)); 
+    else 
+        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER)); 
     pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER); 
     pbmi->bmiHeader.biWidth = bmp.bmWidth; 
     pbmi->bmiHeader.biHeight = bmp.bmHeight; 
@@ -58,28 +55,20 @@ static void CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi,
 
     pbih = (PBITMAPINFOHEADER)pbi;
     lpBits = (LPBYTE)GlobalAlloc(GMEM_FIXED, pbih->biSizeImage);
-
     if (!lpBits)
         return;
-    if (!GetDIBits(hDC, hBMP, 0, (WORD)pbih->biHeight, lpBits, pbi,
-                   DIB_RGB_COLORS))
+    if (!GetDIBits(hDC, hBMP, 0, (WORD)pbih->biHeight, lpBits, pbi, DIB_RGB_COLORS))
         return;
-
     hf = CreateFileA(pszFile, GENERIC_READ | GENERIC_WRITE, (DWORD)0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, (HANDLE)NULL);
     if (hf == INVALID_HANDLE_VALUE)
         return;
     hdr.bfType = 0x4d42;
-    hdr.bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) +
-                         pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD) + pbih->biSizeImage);
+    hdr.bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD) + pbih->biSizeImage);
     hdr.bfReserved1 = 0;
     hdr.bfReserved2 = 0;
-    hdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) +
-                    pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD);
-    if (!WriteFile(hf, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER),
-                   (LPDWORD)&dwTmp, NULL))
-    {
+    hdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD);
+    if (!WriteFile(hf, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER), (LPDWORD)&dwTmp, NULL))
         return;
-    }
     if (!WriteFile(hf, (LPVOID)pbih, sizeof(BITMAPINFOHEADER) + pbih->biClrUsed * sizeof(RGBQUAD), (LPDWORD)&dwTmp, (NULL)))
         return;
     dwTotal = cb = pbih->biSizeImage;
@@ -106,11 +95,18 @@ VOID TakeScreenshot(void)
     HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
     HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
     BOOL bRet = BitBlt(hDC, 0, 0, w, h, hScreen, x1, y1, SRCCOPY);
+    if (bRet == FALSE)
+    {
+        DeleteDC(hDC);
+        ReleaseDC(NULL, hScreen);
+        DeleteObject(hBitmap);
+        return;
+    }
     PBITMAPINFO pbi = CreateBitmapInfoStruct(hBitmap);
     SYSTEMTIME lt;
     char path[MAX_PATH];
     GetLocalTime(&lt);
-    sprintf(path, "%s-%d-%d-%d-%d-%d-%d.bmp", "C:\\scrnsht", lt.wDay, lt.wMonth, lt.wYear, lt.wHour, lt.wMinute, lt.wSecond);
+    sprintf_s(path, _countof(path) ,"%s-%d-%d-%d-%d-%d-%d.bmp", "C:\\scrnsht", lt.wDay, lt.wMonth, lt.wYear, lt.wHour, lt.wMinute, lt.wSecond);
     CreateBMPFile(path, pbi, hBitmap, hDC);
     SelectObject(hDC, old_obj);
     DeleteDC(hDC);

