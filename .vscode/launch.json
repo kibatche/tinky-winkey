@@ -5,9 +5,9 @@
       "name": "Debug C avec MSVC",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/winkey.exe",
+      "program": "${workspaceFolder}/svc.exe",
       "args": [
-        // "start"
+         "show"
       ],
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",

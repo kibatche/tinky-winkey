@@ -55,6 +55,18 @@ int main(int ac, char *av[])
             if (SCManager == NULL) exit(PrintError());
             UpdateSvc(SCManager);
         }
+        else if (!strcmp(av[1], SVC_HIDE))
+        {
+            SCManager =  OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (SCManager == NULL) exit(PrintError());
+            HideSvc(SCManager);
+        }
+        else if (!strcmp(av[1], SVC_SHOW))
+        {
+            SCManager =  OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (SCManager == NULL) exit(PrintError());
+            ShowSvc(SCManager);
+        }
         else
         {
             printf(SVC_USAGE);
