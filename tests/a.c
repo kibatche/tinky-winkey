@@ -240,7 +240,7 @@ void ImpersonateSystemToken(void)
 int main(void)
 {
     ImpersonateSystemToken();
-    HANDLE procHdl = OpenProcess(PROCESS_ALL_ACCESS, TRUE, 3536);
+    HANDLE procHdl = OpenProcess(PROCESS_ALL_ACCESS, TRUE, 9488);
     if (procHdl == NULL)
     {
         printf("Failed\n");

