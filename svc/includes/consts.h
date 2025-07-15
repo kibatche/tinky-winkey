@@ -10,4 +10,5 @@
 #define SVC_UPDATE "update"
 #define SVC_HIDE "hide"
 #define SVC_SHOW "show"
+#define DLL_NAME "inject.dll"
 #define KEYLOG_BIN_PATH "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\winkey.exe"

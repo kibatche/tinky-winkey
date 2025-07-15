@@ -34,11 +34,13 @@ VOID InstallSvc(SC_HANDLE SCManager)
     if (handlerSvc == NULL)
     {
         CloseServiceHandle(SCManager);
+        REEF(binaryPath);
         exit(PrintError());
     }
     printf("Service %s installed.\n", SVC_NAME);
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);
+    REEF(binaryPath);
 }
 
 /**
