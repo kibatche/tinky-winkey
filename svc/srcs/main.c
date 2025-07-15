@@ -3,9 +3,18 @@
 SERVICE_STATUS svcStatus;
 SERVICE_STATUS_HANDLE svcStatusHandle;
 HANDLE svcStopEvt = NULL; 
+static void t(void)
+{
+    char *te = malloc(1);
+    (void)te;
+}
+
 
 int main(int ac, char *av[])
 {
+    #ifdef DEBUG
+        _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+    #endif
     if (ac == 1)
     {
         SERVICE_TABLE_ENTRY DispatchTable[] = {
@@ -81,6 +90,9 @@ int main(int ac, char *av[])
     {
         printf(SVC_USAGE);
         exit(1);
-    }  
+    }
+    t();
+    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG); 
+    _CrtDumpMemoryLeaks();
     exit(0);
 }

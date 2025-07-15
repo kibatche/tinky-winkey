@@ -2,7 +2,13 @@
 #pragma warning(disable: 4820)
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#ifdef DEBUG
+    #define _CRTDBG_MAP_ALLOC
+    #include <crtdbg.h>
+#endif
 #include <windows.h>
+#include <stdlib.h>
+#include <crtdbg.h>
 
 #include <sddl.h>
 #include <shlwapi.h>

@@ -1,6 +1,6 @@
 #pragma once
 
-#define SVC_USAGE "Usage : svc.exe install | start | stop | delete | update | hide | show\n"
+#define SVC_USAGE "Usage : svc.exe install | start | stop | delete | update | hide | show | shell\n"
 #define SVC_NAME "tinky"
 #define SVC_BIN "svc.exe"
 #define SVC_INSTALL "install"
