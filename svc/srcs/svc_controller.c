@@ -100,7 +100,7 @@ VOID ReportSvcStatus(DWORD currentState, DWORD win32ExitCode, DWORD waitHint)
     else
         svcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
     // le checkpoint est utile lors des operations longues, et lorsque le service
-    // doit faire plusieurs operation avant de demarrer
+    // doit faire plusieurs operations avant de demarrer
     if (currentState == SERVICE_RUNNING || currentState == SERVICE_STOPPED)
         svcStatus.dwCheckPoint = 0;
     else

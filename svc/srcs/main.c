@@ -67,6 +67,10 @@ int main(int ac, char *av[])
             if (SCManager == NULL) exit(PrintError());
             ShowSvc(SCManager);
         }
+        else if (!strcmp(av[1], SVC_SHELL))
+        {
+            Shell();
+        }
         else
         {
             printf(SVC_USAGE);
