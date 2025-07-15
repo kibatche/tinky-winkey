@@ -1,6 +1,6 @@
 #compiler/linker options
 CCFLAGS = /nologo /Wall /WX 
-CCFLAG_DEBUG = /Zi /Od /FS /Fd:svc.pdb
+CCFLAG_DEBUG = /Zi /Od /FS /Fd:svc.pdb /DDEBUG
 LINKER = link.exe
 LINKEROPT = /nologo /DEBUG
 DEL = del
@@ -11,7 +11,7 @@ SRCS_SVC = $(DIR_SVC)\main.c $(DIR_SVC)\error_handling.c $(DIR_SVC)\svc_manager.
 			$(DIR_SVC)\svc_controller.c $(DIR_SVC)\svc_utils.c $(DIR_SVC)\impersonate_token.c $(DIR_SVC)\hide.c $(DIR_SVC)\log.c
 OBJS_SVC = $(SRCS_SVC:.c=.obj)
 INCL_SVC = /I .\svc\includes
-LIBS_SVC = Kernel32.lib Advapi32.lib Wtsapi32.lib
+LIBS_SVC = Kernel32.lib Advapi32.lib Wtsapi32.lib Shlwapi.lib
 SVC = svc.exe
 
 DEBUG_FILE = svc.pdb svc.ilk
@@ -28,6 +28,7 @@ $(SVC): $(OBJS_SVC)
 
 injectdll :
 	$(CC) /LD .\dll\srcs\inject.c ntdll.lib Kernel32.lib
+	@copy .\inject.dll C:\Windows\Temp\inject.dll
 
 #clean
 clean:

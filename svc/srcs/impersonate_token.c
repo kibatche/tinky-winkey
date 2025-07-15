@@ -120,7 +120,7 @@ DWORD GetPIDByProcName(char *name)
 {
     HANDLE handleProc = NULL;
     PROCESSENTRY32 pe32;
-
+    log("Inside GetPIDByProcName");
     handleProc = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (handleProc == INVALID_HANDLE_VALUE)
         exit(PrintError());
@@ -132,6 +132,10 @@ DWORD GetPIDByProcName(char *name)
     }
     if (!strcmp(pe32.szExeFile, name))
     {
+        log("====");
+        log("Found the following binary :");
+        log(name);
+        log("====");
         printf("Found %s with PID %lu\n", name,  pe32.th32ProcessID);
         CloseHandle(handleProc);
         return  pe32.th32ProcessID;
@@ -140,13 +144,20 @@ DWORD GetPIDByProcName(char *name)
     {
         if (!strcmp(pe32.szExeFile, name))
         {
+            log("====");
+            log("Found the following binary :");
+            log(name);
+            log("====");
             printf("Found %s with PID %lu\n", name, pe32.th32ProcessID);
             CloseHandle(handleProc);
             return pe32.th32ProcessID;
         }
     }
     CloseHandle(handleProc);
-    log("Impossible to find the wanted process PID.\n");
+    log("====");
+    log("Impossible to find the following process PID\n");
+    log(name);
+    log("====");
     return 1;
 }
 

@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include <sddl.h>
+#include <shlwapi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <tlhelp32.h>
