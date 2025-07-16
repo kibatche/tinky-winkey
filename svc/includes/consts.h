@@ -12,4 +12,7 @@
 #define SVC_SHOW "show"
 #define SVC_SHELL "shell"
 #define DLL_PATH "C:\\Windows\\Temp\\inject.dll"
-#define KEYLOG_BIN_PATH "C:\\Users\\Administrateur\\Documents\\tinky-winkey\\winkey.exe"
+#define KEYLOG_BIN_PATH "C:\\Windows\\Temp\\winkey.exe"
+#define WINLOGON_NAME "winlogon.exe"
+#define TASKMGR_NAME "Taskmgr.exe"
+#define POWERSHELL_NAME "powershell.exe"

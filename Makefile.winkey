@@ -1,8 +1,8 @@
 #compiler/linker options
 CCFLAGS = /nologo /Wall /WX
-CCFLAG_DEBUG = /Zi /Od /FS /Fd:winkey.pdb
+CCFLAG_DEBUG = #/Zi /Od /FS /Fd:winkey.pdb
 LINKER = link.exe
-LINKEROPT = /nologo /DEBUG
+LINKEROPT = /nologo #/DEBUG
 
 DEBUG_FILE = winkey.pdb winkey.ilk
 
@@ -16,7 +16,7 @@ INCL_WINKEY = /I .\winkey\includes
 LIBS_WINKEY = Kernel32.lib Advapi32.lib Gdi32.lib User32.lib Wtsapi32.lib
 WINKEY = winkey.exe
 
-all: $(WINKEY)
+all: $(WINKEY) copy_bin
 
 #linker
 $(WINKEY): $(OBJS_WINKEY)
@@ -25,6 +25,10 @@ $(WINKEY): $(OBJS_WINKEY)
 #compiler
 .c.obj:
 	$(CC) $(CCFLAGS) $(CCFLAG_DEBUG) $(INCL_WINKEY) /c $< /Fo:$@
+
+#copy exe in win temp dir
+copy_bin:
+	copy .\winkey.exe C:\Windows\Temp\
 
 #clean
 clean:

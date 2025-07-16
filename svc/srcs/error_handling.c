@@ -16,12 +16,14 @@ int PrintError(void)
         NULL );
     if (!sz)//the error is not known
     {
-        printf("Unknown error.\n");
+        log("=== ERROR ===");
+        log("Unknown error.");
+        log("=== END OF ERROR ===");
         return ERROR;
     }
     printf(u8"Error svc.exe %d : %hs\n", err, buf);
-    log("\n");
+    log("=== ERROR ===");
     log(buf);
-    log("\n");
+    log("=== END OF ERROR ===");
     return ERROR;
 }

@@ -7,7 +7,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/svc.exe",
       "args": [
-         "show"
+         "shell"
       ],
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",

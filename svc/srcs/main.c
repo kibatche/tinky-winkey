@@ -3,12 +3,6 @@
 SERVICE_STATUS svcStatus;
 SERVICE_STATUS_HANDLE svcStatusHandle;
 HANDLE svcStopEvt = NULL; 
-static void t(void)
-{
-    char *te = malloc(1);
-    (void)te;
-}
-
 
 int main(int ac, char *av[])
 {
@@ -91,8 +85,9 @@ int main(int ac, char *av[])
         printf(SVC_USAGE);
         exit(1);
     }
-    t();
+    #ifdef DEBUG
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG); 
     _CrtDumpMemoryLeaks();
+    #endif
     exit(0);
 }

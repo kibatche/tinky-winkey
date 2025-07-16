@@ -1,8 +1,8 @@
 #compiler/linker options
 CCFLAGS = /nologo /Wall /WX 
-CCFLAG_DEBUG = /Zi /Od /FS /Fd:svc.pdb /DDEBUG
+CCFLAG_DEBUG = #/Zi /Od /FS /Fd:svc.pdb /DDEBUG
 LINKER = link.exe
-LINKEROPT = /nologo /DEBUG
+LINKEROPT = /nologo #/DEBUG
 DEL = del
 
 #svc.exe related stuff

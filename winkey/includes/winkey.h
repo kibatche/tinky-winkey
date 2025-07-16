@@ -31,5 +31,8 @@ HWND CreateEmptyWindow(void);
 //log
 VOID log(void *toLog, int MODE, BOOL putDate);
 
+//utils
+VOID CheckOneInstance(void);
+
 //error handling
 INT PrintError(void);
