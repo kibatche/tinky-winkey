@@ -1,7 +1,7 @@
 #include "winkey.h"
 
 extern BOOL foregroundWindowChanged;
-extern char foregroundWindowTitle[4096];
+extern WCHAR foregroundWindowTitle[4096];
 extern HANDLE startEvent;
 
 /**
@@ -886,16 +886,16 @@ VOID GetWindowTitle(HWND hwnd)
 {
     if (hwnd == NULL)
     {
-        strcpy_s(foregroundWindowTitle, 4096, "[GetWindowTitle Failed]");
-        log(foregroundWindowTitle, CHAR_MODE, TRUE);
+        wcscpy_s(foregroundWindowTitle, 4096, L"[GetWindowTitle Failed]");
+        log(foregroundWindowTitle, WCHAR_MODE, TRUE);
         return;
     }
-    int windowTitleLen = GetWindowTextLength(hwnd);
+    int windowTitleLen = GetWindowTextLengthW(hwnd);
     if (windowTitleLen > 4095)
         windowTitleLen = 4095;
-    GetWindowTextA(hwnd, foregroundWindowTitle, windowTitleLen + 1);
-    log(foregroundWindowTitle, CHAR_MODE, TRUE);
-    if (!strlen(foregroundWindowTitle))
+    GetWindowTextW(hwnd, foregroundWindowTitle, windowTitleLen + 1);
+    log(foregroundWindowTitle, WCHAR_MODE, TRUE);
+    if (!wcslen(foregroundWindowTitle))
         log("[NO WINDOW]", CHAR_MODE, TRUE);
     foregroundWindowChanged = TRUE;
 }

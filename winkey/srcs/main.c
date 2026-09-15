@@ -2,7 +2,7 @@
 
 HHOOK winHook;
 BOOL foregroundWindowChanged;
-char foregroundWindowTitle[4096];
+WCHAR foregroundWindowTitle[4096];
 HANDLE startEvent;
 /**
  * @function StartServiceCtrlDispatcher() :

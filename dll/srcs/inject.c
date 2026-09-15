@@ -67,7 +67,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
     switch (ul_reason_for_call)
     {
         case DLL_PROCESS_ATTACH:
-            
             OrigNtQuerySystemInformation  = (NtQuerySystemInformationHk)GetProcAddress(GetModuleHandleA("ntdll"), "NtQuerySystemInformation");
             StartHook();
             break;

